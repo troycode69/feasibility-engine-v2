@@ -1,0 +1,866 @@
+[
+  {
+    "rental_month": 1,
+    "vacate_month": 1,
+    "vacate_rate": 0.02563947,
+    "los": null
+  },
+  {
+    "rental_month": 1,
+    "vacate_month": 2,
+    "vacate_rate": 0.1155027,
+    "los": 1
+  },
+  {
+    "rental_month": 1,
+    "vacate_month": 3,
+    "vacate_rate": 0.1007537,
+    "los": 2
+  },
+  {
+    "rental_month": 1,
+    "vacate_month": 4,
+    "vacate_rate": 0.08351161,
+    "los": 3
+  },
+  {
+    "rental_month": 1,
+    "vacate_month": 5,
+    "vacate_rate": 0.09197889,
+    "los": 4
+  },
+  {
+    "rental_month": 1,
+    "vacate_month": 6,
+    "vacate_rate": 0.08100133,
+    "los": 5
+  },
+  {
+    "rental_month": 1,
+    "vacate_month": 7,
+    "vacate_rate": 0.08582979,
+    "los": 6
+  },
+  {
+    "rental_month": 1,
+    "vacate_month": 8,
+    "vacate_rate": 0.07626927,
+    "los": 7
+  },
+  {
+    "rental_month": 1,
+    "vacate_month": 9,
+    "vacate_rate": 0.06133033,
+    "los": 8
+  },
+  {
+    "rental_month": 1,
+    "vacate_month": 10,
+    "vacate_rate": 0.06417176,
+    "los": 9
+  },
+  {
+    "rental_month": 1,
+    "vacate_month": 11,
+    "vacate_rate": 0.05973792,
+    "los": 10
+  },
+  {
+    "rental_month": 1,
+    "vacate_month": 12,
+    "vacate_rate": 0.05847793,
+    "los": 11
+  },
+  {
+    "rental_month": 2,
+    "vacate_month": 1,
+    "vacate_rate": 0.05668497,
+    "los": 11
+  },
+  {
+    "rental_month": 2,
+    "vacate_month": 2,
+    "vacate_rate": 0.02464041,
+    "los": null
+  },
+  {
+    "rental_month": 2,
+    "vacate_month": 3,
+    "vacate_rate": 0.1247569,
+    "los": 1
+  },
+  {
+    "rental_month": 2,
+    "vacate_month": 4,
+    "vacate_rate": 0.0973958,
+    "los": 2
+  },
+  {
+    "rental_month": 2,
+    "vacate_month": 5,
+    "vacate_rate": 0.08531392,
+    "los": 3
+  },
+  {
+    "rental_month": 2,
+    "vacate_month": 6,
+    "vacate_rate": 0.09292673,
+    "los": 4
+  },
+  {
+    "rental_month": 2,
+    "vacate_month": 7,
+    "vacate_rate": 0.0812325,
+    "los": 5
+  },
+  {
+    "rental_month": 2,
+    "vacate_month": 8,
+    "vacate_rate": 0.08410549,
+    "los": 6
+  },
+  {
+    "rental_month": 2,
+    "vacate_month": 9,
+    "vacate_rate": 0.07546539,
+    "los": 7
+  },
+  {
+    "rental_month": 2,
+    "vacate_month": 10,
+    "vacate_rate": 0.07006753,
+    "los": 8
+  },
+  {
+    "rental_month": 2,
+    "vacate_month": 11,
+    "vacate_rate": 0.06641588,
+    "los": 9
+  },
+  {
+    "rental_month": 2,
+    "vacate_month": 12,
+    "vacate_rate": 0.06217833,
+    "los": 10
+  },
+  {
+    "rental_month": 3,
+    "vacate_month": 1,
+    "vacate_rate": 0.05608376,
+    "los": 10
+  },
+  {
+    "rental_month": 3,
+    "vacate_month": 2,
+    "vacate_rate": 0.05155692,
+    "los": 11
+  },
+  {
+    "rental_month": 3,
+    "vacate_month": 3,
+    "vacate_rate": 0.032022,
+    "los": null
+  },
+  {
+    "rental_month": 3,
+    "vacate_month": 4,
+    "vacate_rate": 0.115692,
+    "los": 1
+  },
+  {
+    "rental_month": 3,
+    "vacate_month": 5,
+    "vacate_rate": 0.09391817,
+    "los": 2
+  },
+  {
+    "rental_month": 3,
+    "vacate_month": 6,
+    "vacate_rate": 0.08977636,
+    "los": 3
+  },
+  {
+    "rental_month": 3,
+    "vacate_month": 7,
+    "vacate_rate": 0.0894149,
+    "los": 4
+  },
+  {
+    "rental_month": 3,
+    "vacate_month": 8,
+    "vacate_rate": 0.08724833,
+    "los": 5
+  },
+  {
+    "rental_month": 3,
+    "vacate_month": 9,
+    "vacate_rate": 0.08230089,
+    "los": 6
+  },
+  {
+    "rental_month": 3,
+    "vacate_month": 10,
+    "vacate_rate": 0.07925948,
+    "los": 7
+  },
+  {
+    "rental_month": 3,
+    "vacate_month": 11,
+    "vacate_rate": 0.07458302,
+    "los": 8
+  },
+  {
+    "rental_month": 3,
+    "vacate_month": 12,
+    "vacate_rate": 0.05961167,
+    "los": 9
+  },
+  {
+    "rental_month": 4,
+    "vacate_month": 1,
+    "vacate_rate": 0.06307607,
+    "los": 9
+  },
+  {
+    "rental_month": 4,
+    "vacate_month": 2,
+    "vacate_rate": 0.05212653,
+    "los": 10
+  },
+  {
+    "rental_month": 4,
+    "vacate_month": 3,
+    "vacate_rate": 0.05256539,
+    "los": 11
+  },
+  {
+    "rental_month": 4,
+    "vacate_month": 4,
+    "vacate_rate": 0.02270167,
+    "los": null
+  },
+  {
+    "rental_month": 4,
+    "vacate_month": 5,
+    "vacate_rate": 0.1236774,
+    "los": 1
+  },
+  {
+    "rental_month": 4,
+    "vacate_month": 6,
+    "vacate_rate": 0.09913193,
+    "los": 2
+  },
+  {
+    "rental_month": 4,
+    "vacate_month": 7,
+    "vacate_rate": 0.09266353,
+    "los": 3
+  },
+  {
+    "rental_month": 4,
+    "vacate_month": 8,
+    "vacate_rate": 0.1030057,
+    "los": 4
+  },
+  {
+    "rental_month": 4,
+    "vacate_month": 9,
+    "vacate_rate": 0.081327,
+    "los": 5
+  },
+  {
+    "rental_month": 4,
+    "vacate_month": 10,
+    "vacate_rate": 0.0832458,
+    "los": 6
+  },
+  {
+    "rental_month": 4,
+    "vacate_month": 11,
+    "vacate_rate": 0.07836391,
+    "los": 7
+  },
+  {
+    "rental_month": 4,
+    "vacate_month": 12,
+    "vacate_rate": 0.06693649,
+    "los": 8
+  },
+  {
+    "rental_month": 5,
+    "vacate_month": 1,
+    "vacate_rate": 0.06474391,
+    "los": 8
+  },
+  {
+    "rental_month": 5,
+    "vacate_month": 2,
+    "vacate_rate": 0.0561929,
+    "los": 9
+  },
+  {
+    "rental_month": 5,
+    "vacate_month": 3,
+    "vacate_rate": 0.05702349,
+    "los": 10
+  },
+  {
+    "rental_month": 5,
+    "vacate_month": 4,
+    "vacate_rate": 0.05356501,
+    "los": 11
+  },
+  {
+    "rental_month": 5,
+    "vacate_month": 5,
+    "vacate_rate": 0.0247134,
+    "los": null
+  },
+  {
+    "rental_month": 5,
+    "vacate_month": 6,
+    "vacate_rate": 0.1251508,
+    "los": 1
+  },
+  {
+    "rental_month": 5,
+    "vacate_month": 7,
+    "vacate_rate": 0.1102231,
+    "los": 2
+  },
+  {
+    "rental_month": 5,
+    "vacate_month": 8,
+    "vacate_rate": 0.1333958,
+    "los": 3
+  },
+  {
+    "rental_month": 5,
+    "vacate_month": 9,
+    "vacate_rate": 0.1096149,
+    "los": 4
+  },
+  {
+    "rental_month": 5,
+    "vacate_month": 10,
+    "vacate_rate": 0.0922914,
+    "los": 5
+  },
+  {
+    "rental_month": 5,
+    "vacate_month": 11,
+    "vacate_rate": 0.09134094,
+    "los": 6
+  },
+  {
+    "rental_month": 5,
+    "vacate_month": 12,
+    "vacate_rate": 0.07688775,
+    "los": 7
+  },
+  {
+    "rental_month": 6,
+    "vacate_month": 1,
+    "vacate_rate": 0.06883755,
+    "los": 7
+  },
+  {
+    "rental_month": 6,
+    "vacate_month": 2,
+    "vacate_rate": 0.06176412,
+    "los": 8
+  },
+  {
+    "rental_month": 6,
+    "vacate_month": 3,
+    "vacate_rate": 0.06456777,
+    "los": 9
+  },
+  {
+    "rental_month": 6,
+    "vacate_month": 4,
+    "vacate_rate": 0.05526436,
+    "los": 10
+  },
+  {
+    "rental_month": 6,
+    "vacate_month": 5,
+    "vacate_rate": 0.05730174,
+    "los": 11
+  },
+  {
+    "rental_month": 6,
+    "vacate_month": 6,
+    "vacate_rate": 0.02873933,
+    "los": null
+  },
+  {
+    "rental_month": 6,
+    "vacate_month": 7,
+    "vacate_rate": 0.1355074,
+    "los": 1
+  },
+  {
+    "rental_month": 6,
+    "vacate_month": 8,
+    "vacate_rate": 0.1195156,
+    "los": 2
+  },
+  {
+    "rental_month": 6,
+    "vacate_month": 9,
+    "vacate_rate": 0.1107309,
+    "los": 3
+  },
+  {
+    "rental_month": 6,
+    "vacate_month": 10,
+    "vacate_rate": 0.09315203,
+    "los": 4
+  },
+  {
+    "rental_month": 6,
+    "vacate_month": 11,
+    "vacate_rate": 0.08774643,
+    "los": 5
+  },
+  {
+    "rental_month": 6,
+    "vacate_month": 12,
+    "vacate_rate": 0.08767913,
+    "los": 6
+  },
+  {
+    "rental_month": 7,
+    "vacate_month": 1,
+    "vacate_rate": 0.07739911,
+    "los": 6
+  },
+  {
+    "rental_month": 7,
+    "vacate_month": 2,
+    "vacate_rate": 0.06306136,
+    "los": 7
+  },
+  {
+    "rental_month": 7,
+    "vacate_month": 3,
+    "vacate_rate": 0.06501517,
+    "los": 8
+  },
+  {
+    "rental_month": 7,
+    "vacate_month": 4,
+    "vacate_rate": 0.05992631,
+    "los": 9
+  },
+  {
+    "rental_month": 7,
+    "vacate_month": 5,
+    "vacate_rate": 0.05565157,
+    "los": 10
+  },
+  {
+    "rental_month": 7,
+    "vacate_month": 6,
+    "vacate_rate": 0.06215655,
+    "los": 11
+  },
+  {
+    "rental_month": 7,
+    "vacate_month": 7,
+    "vacate_rate": 0.03319441,
+    "los": null
+  },
+  {
+    "rental_month": 7,
+    "vacate_month": 8,
+    "vacate_rate": 0.1452608,
+    "los": 1
+  },
+  {
+    "rental_month": 7,
+    "vacate_month": 9,
+    "vacate_rate": 0.1143869,
+    "los": 2
+  },
+  {
+    "rental_month": 7,
+    "vacate_month": 10,
+    "vacate_rate": 0.09687397,
+    "los": 3
+  },
+  {
+    "rental_month": 7,
+    "vacate_month": 11,
+    "vacate_rate": 0.09132686,
+    "los": 4
+  },
+  {
+    "rental_month": 7,
+    "vacate_month": 12,
+    "vacate_rate": 0.0811983,
+    "los": 5
+  },
+  {
+    "rental_month": 8,
+    "vacate_month": 1,
+    "vacate_rate": 0.07752999,
+    "los": 5
+  },
+  {
+    "rental_month": 8,
+    "vacate_month": 2,
+    "vacate_rate": 0.07701711,
+    "los": 6
+  },
+  {
+    "rental_month": 8,
+    "vacate_month": 3,
+    "vacate_rate": 0.07583657,
+    "los": 7
+  },
+  {
+    "rental_month": 8,
+    "vacate_month": 4,
+    "vacate_rate": 0.06574359,
+    "los": 8
+  },
+  {
+    "rental_month": 8,
+    "vacate_month": 5,
+    "vacate_rate": 0.05933414,
+    "los": 9
+  },
+  {
+    "rental_month": 8,
+    "vacate_month": 6,
+    "vacate_rate": 0.05877541,
+    "los": 10
+  },
+  {
+    "rental_month": 8,
+    "vacate_month": 7,
+    "vacate_rate": 0.0593136,
+    "los": 11
+  },
+  {
+    "rental_month": 8,
+    "vacate_month": 8,
+    "vacate_rate": 0.03373371,
+    "los": null
+  },
+  {
+    "rental_month": 8,
+    "vacate_month": 9,
+    "vacate_rate": 0.1289792,
+    "los": 1
+  },
+  {
+    "rental_month": 8,
+    "vacate_month": 10,
+    "vacate_rate": 0.1092521,
+    "los": 2
+  },
+  {
+    "rental_month": 8,
+    "vacate_month": 11,
+    "vacate_rate": 0.08991608,
+    "los": 3
+  },
+  {
+    "rental_month": 8,
+    "vacate_month": 12,
+    "vacate_rate": 0.09008416,
+    "los": 4
+  },
+  {
+    "rental_month": 9,
+    "vacate_month": 1,
+    "vacate_rate": 0.08182938,
+    "los": 4
+  },
+  {
+    "rental_month": 9,
+    "vacate_month": 2,
+    "vacate_rate": 0.07376985,
+    "los": 5
+  },
+  {
+    "rental_month": 9,
+    "vacate_month": 3,
+    "vacate_rate": 0.08536272,
+    "los": 6
+  },
+  {
+    "rental_month": 9,
+    "vacate_month": 4,
+    "vacate_rate": 0.07266436,
+    "los": 7
+  },
+  {
+    "rental_month": 9,
+    "vacate_month": 5,
+    "vacate_rate": 0.07114026,
+    "los": 8
+  },
+  {
+    "rental_month": 9,
+    "vacate_month": 6,
+    "vacate_rate": 0.06886065,
+    "los": 9
+  },
+  {
+    "rental_month": 9,
+    "vacate_month": 7,
+    "vacate_rate": 0.06138197,
+    "los": 10
+  },
+  {
+    "rental_month": 9,
+    "vacate_month": 8,
+    "vacate_rate": 0.05891879,
+    "los": 11
+  },
+  {
+    "rental_month": 9,
+    "vacate_month": 9,
+    "vacate_rate": 0.04283018,
+    "los": null
+  },
+  {
+    "rental_month": 9,
+    "vacate_month": 10,
+    "vacate_rate": 0.139328,
+    "los": 1
+  },
+  {
+    "rental_month": 9,
+    "vacate_month": 11,
+    "vacate_rate": 0.1001783,
+    "los": 2
+  },
+  {
+    "rental_month": 9,
+    "vacate_month": 12,
+    "vacate_rate": 0.08778778,
+    "los": 3
+  },
+  {
+    "rental_month": 10,
+    "vacate_month": 1,
+    "vacate_rate": 0.07911957,
+    "los": 3
+  },
+  {
+    "rental_month": 10,
+    "vacate_month": 2,
+    "vacate_rate": 0.08040322,
+    "los": 4
+  },
+  {
+    "rental_month": 10,
+    "vacate_month": 3,
+    "vacate_rate": 0.08336258,
+    "los": 5
+  },
+  {
+    "rental_month": 10,
+    "vacate_month": 4,
+    "vacate_rate": 0.08982094,
+    "los": 6
+  },
+  {
+    "rental_month": 10,
+    "vacate_month": 5,
+    "vacate_rate": 0.07752998,
+    "los": 7
+  },
+  {
+    "rental_month": 10,
+    "vacate_month": 6,
+    "vacate_rate": 0.06802876,
+    "los": 8
+  },
+  {
+    "rental_month": 10,
+    "vacate_month": 7,
+    "vacate_rate": 0.06384022,
+    "los": 9
+  },
+  {
+    "rental_month": 10,
+    "vacate_month": 8,
+    "vacate_rate": 0.06594127,
+    "los": 10
+  },
+  {
+    "rental_month": 10,
+    "vacate_month": 9,
+    "vacate_rate": 0.06446039,
+    "los": 11
+  },
+  {
+    "rental_month": 10,
+    "vacate_month": 10,
+    "vacate_rate": 0.03455228,
+    "los": null
+  },
+  {
+    "rental_month": 10,
+    "vacate_month": 11,
+    "vacate_rate": 0.1245336,
+    "los": 1
+  },
+  {
+    "rental_month": 10,
+    "vacate_month": 12,
+    "vacate_rate": 0.1013745,
+    "los": 2
+  },
+  {
+    "rental_month": 11,
+    "vacate_month": 1,
+    "vacate_rate": 0.0907948,
+    "los": 2
+  },
+  {
+    "rental_month": 11,
+    "vacate_month": 2,
+    "vacate_rate": 0.07751878,
+    "los": 3
+  },
+  {
+    "rental_month": 11,
+    "vacate_month": 3,
+    "vacate_rate": 0.08904964,
+    "los": 4
+  },
+  {
+    "rental_month": 11,
+    "vacate_month": 4,
+    "vacate_rate": 0.07870921,
+    "los": 5
+  },
+  {
+    "rental_month": 11,
+    "vacate_month": 5,
+    "vacate_rate": 0.08349881,
+    "los": 6
+  },
+  {
+    "rental_month": 11,
+    "vacate_month": 6,
+    "vacate_rate": 0.07085591,
+    "los": 7
+  },
+  {
+    "rental_month": 11,
+    "vacate_month": 7,
+    "vacate_rate": 0.06884481,
+    "los": 8
+  },
+  {
+    "rental_month": 11,
+    "vacate_month": 8,
+    "vacate_rate": 0.06804771,
+    "los": 9
+  },
+  {
+    "rental_month": 11,
+    "vacate_month": 9,
+    "vacate_rate": 0.0563979,
+    "los": 10
+  },
+  {
+    "rental_month": 11,
+    "vacate_month": 10,
+    "vacate_rate": 0.05703993,
+    "los": 11
+  },
+  {
+    "rental_month": 11,
+    "vacate_month": 11,
+    "vacate_rate": 0.02687403,
+    "los": null
+  },
+  {
+    "rental_month": 11,
+    "vacate_month": 12,
+    "vacate_rate": 0.120367,
+    "los": 1
+  },
+  {
+    "rental_month": 12,
+    "vacate_month": 1,
+    "vacate_rate": 0.1270375,
+    "los": 1
+  },
+  {
+    "rental_month": 12,
+    "vacate_month": 2,
+    "vacate_rate": 0.09495174,
+    "los": 2
+  },
+  {
+    "rental_month": 12,
+    "vacate_month": 3,
+    "vacate_rate": 0.08665954,
+    "los": 3
+  },
+  {
+    "rental_month": 12,
+    "vacate_month": 4,
+    "vacate_rate": 0.08938547,
+    "los": 4
+  },
+  {
+    "rental_month": 12,
+    "vacate_month": 5,
+    "vacate_rate": 0.08524525,
+    "los": 5
+  },
+  {
+    "rental_month": 12,
+    "vacate_month": 6,
+    "vacate_rate": 0.0754513,
+    "los": 6
+  },
+  {
+    "rental_month": 12,
+    "vacate_month": 7,
+    "vacate_rate": 0.07544518,
+    "los": 7
+  },
+  {
+    "rental_month": 12,
+    "vacate_month": 8,
+    "vacate_rate": 0.07244174,
+    "los": 8
+  },
+  {
+    "rental_month": 12,
+    "vacate_month": 9,
+    "vacate_rate": 0.06340556,
+    "los": 9
+  },
+  {
+    "rental_month": 12,
+    "vacate_month": 10,
+    "vacate_rate": 0.06148821,
+    "los": 10
+  },
+  {
+    "rental_month": 12,
+    "vacate_month": 11,
+    "vacate_rate": 0.0550417,
+    "los": 11
+  },
+  {
+    "rental_month": 12,
+    "vacate_month": 12,
+    "vacate_rate": 0.0311462,
+    "los": null
+  }
+]

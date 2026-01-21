@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+# venv/  <-- ALLOW VENV AS REQUESTED
+.env
+
+# Secrets
+.claude/
+
+# OS
+.DS_Store
+
+# Large Files (>100MB) - GitHub Blocker
+venv/lib/python3.13/site-packages/playwright/driver/node

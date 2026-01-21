@@ -1,0 +1,66 @@
+{
+  "payroll": {
+    "medical_per_fte": 822,
+    "payroll_tax_pct": 0.01,
+    "workers_comp_pct": 0.01
+  },
+  "utilities": {
+    "rubbish_psf": 0.11,
+    "exterminating_psf": 0.05,
+    "electric_psf": 0.28,
+    "telephone_psf": 0.05,
+    "water_sewer_psf": 0.12,
+    "gas_utilities_psf": 0.1,
+    "security_psf": 0.0,
+    "fire_alarm_psf": 0.01
+  },
+  "operating": {
+    "training_per_month": 15,
+    "uniforms_per_ee": 175,
+    "supplies_per_month": 0,
+    "help_desk_per_month": 43,
+    "truck_expense_per_month": 0,
+    "dues_subscriptions_per_month": 12,
+    "landscaping_psf": 0.14,
+    "signs_per_month": 0,
+    "auto_expense_per_month": 0,
+    "fees_licenses_per_month": 17,
+    "postage_per_month": 0,
+    "office_supplies_per_month": 0,
+    "computer_expense_per_month": 64,
+    "cms_expense_per_month": 189,
+    "visa_mc_pct": 0.015,
+    "amex_pct": 0.008,
+    "legal_per_month": 50
+  },
+  "repairs_maintenance": {
+    "base_psf": 0.55,
+    "elevator_psf": 0.05,
+    "golf_cart_annual": 2000,
+    "parking_lot_psf": 0.02
+  },
+  "marketing": {
+    "annual_budget": 12000
+  },
+  "other": {
+    "property_tax_psf": 1.2,
+    "insurance_psf": 0.27,
+    "snow_removal_psf": 0.11,
+    "management_fee_pct": 0.06
+  },
+  "revenue": {
+    "discounts_pct": 0.025,
+    "writeoffs_pct": 0.01,
+    "admin_fee_per_rental": 15.0,
+    "late_fee_pct": 0.001,
+    "merchandise_per_rental": 2.5,
+    "insurance_penetration": 0.75,
+    "insurance_premium_per_unit": 10.0
+  },
+  "growth": {
+    "revenue_annual": 0.04,
+    "expense_annual": 0.025,
+    "property_tax_annual": 0.01,
+    "existing_tenant_rate_increase": 0.12
+  }
+}

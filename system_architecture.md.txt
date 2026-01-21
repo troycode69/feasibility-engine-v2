@@ -1,0 +1,81 @@
+1. High-Level Architecture
+The platform utilizes a multi-layered approach to separate user interface logic, business orchestration, and AI-powered search.
+System Components & Service Mapping
+• User Frontend: A web or mobile interface that captures free-text customer queries and displays storage unit results.
+• Backend API (Cloud Run): Acts as the orchestrator, managing requests between the frontend and Google Cloud services. It maintains the conversation_id to ensure session continuity.
+• Vertex AI Search for Commerce: The core engine that classifies user intent (e.g., searching for a unit vs. asking a support question).
+    ◦ Conversational API: Returns natural language responses and classifies query types.
+    ◦ Core Search API: Fetches actual storage unit availability based on refined queries.
+• Vertex AI Agent Engine (Reasoning Engine): Manages persistent sessions and complex agentic workflows.
+• Product Catalog (Retail API): Stores storage unit metadata (size, price, climate control) as indexed products.
+Interaction Flow
+1. Query Capture: The user enters a query (e.g., "I need a 10x10 climate-controlled unit near me").
+2. Intent Classification: The backend sends this to the Conversational API.
+3. Parallel Processing:
+    ◦ The API classifies the intent as SIMPLE_PRODUCT_SEARCH or INTENT_REFINEMENT.
+    ◦ While the AI generates a text response (e.g., "Sure, I can help you find a 10x10 unit..."), the system initiates a parallel call to the Core Search API using refined_search queries to fetch live inventory.
+4. Action Execution: If the user decides to book, Function Calling is triggered via a Gemini model to interface with the booking database.
+
+--------------------------------------------------------------------------------
+2. Data Model Schema
+The system requires two primary schemas: one for the product catalog (storage units) and one for tracking user interactions for analytics.
+StorageUnit (Product Catalog Schema)
+Based on product attribute requirements for filtering and search.
+{
+  "id": "unit_12345",
+  "title": "10x10 Climate Controlled Storage Unit",
+  "attributes": {
+    "size": {
+      "text": ["10x10"]
+    },
+    "price": {
+      "number": [150.00]
+    },
+    "climate_control": {
+      "text": ["Enabled"]
+    },
+    "status": {
+      "text": ["available"]
+    }
+  },
+  "categories": ["Personal Storage", "Climate Controlled"],
+  "inventory": {
+    "stock_state": "IN_STOCK"
+  }
+}
+CustomerInteraction Logs (UserEvent Schema)
+Crucial for accurately attributing search queries to conversational turns.
+{
+  "visitorId": "user_abc_888",
+  "conversationId": "1577511e-36ed-4054-8e07-48d1ca016bcb",
+  "eventType": "search",
+  "eventTime": "2026-01-20T10:00:00Z",
+  "searchQuery": "10x10 climate controlled",
+  "refinedQuery": "10x10 units with AC",
+  "userQueryType": "INTENT_REFINEMENT"
+}
+
+--------------------------------------------------------------------------------
+3. AI Implementation Strategy
+Workflow for Tuning Storage-Specific Terms
+To ensure the model understands industry-specific jargon like "10x10" or "drive-up access," the following Supervised Fine-Tuning workflow is recommended:
+1. Prepare Data: Create a dataset of prompts and storage-specific completions.
+2. Dataset Upload: Use the Vertex AI SDK for Python to import the dataset into a managed dataset.
+3. Model Training: Initiate a tuning job for the Gemini model.
+4. Deployment: Deploy the tuned model to an endpoint for low-latency inference.
+Chat Interface API
+• Selected API: Gemini 2.5 Pro or Gemini 2.5 Flash.
+• Reasoning: These models support Function Calling (tool use), which is essential for taking actions like "checking availability" or "booking" by bridging the LLM with external storage databases. They also support thought signatures, which improve reasoning quality during multi-turn interactions.
+
+--------------------------------------------------------------------------------
+4. Security & Compliance
+Google Cloud provides enterprise-grade security controls to ensure customer data is handled safely.
+Required IAM Roles & Permissions
+• Vertex AI User: Required for users or service accounts to interact with endpoints and reasoning engines (roles/aiplatform.user).
+• Reasoning Engine Service Agent: The service account cloud-ml-consumeragent-server@system.gserviceaccount.com must be granted the Vertex AI User role to manage persistent sessions.
+• Storage Object Viewer: Required for accessing training data in Cloud Storage.
+Secure Data Handling Controls
+• VPC Service Controls (VPC-SC): Mitigates data exfiltration by confining data movement within an authorized network perimeter.
+• Customer-Managed Encryption Keys (CMEK): Used to encrypt data at rest with keys owned by the customer rather than Google.
+• Access Transparency: Provides audit logs showing when Google personnel access content for support or troubleshooting.
+• HIPAA Compliance: Vertex AI supports HIPAA-regulated workloads, ensuring the platform can handle sensitive personal data if required.

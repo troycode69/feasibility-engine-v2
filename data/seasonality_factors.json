@@ -1,0 +1,210 @@
+{
+  "revenue": [
+    {
+      "month": 1,
+      "rentals_factor": 0.07502432977934906,
+      "occ_delta": 0,
+      "vacates_factor": -0.012333333333333085,
+      "asking_rate_adj": 0.90736979190717,
+      "discount_factor": 1.0
+    },
+    {
+      "month": 2,
+      "rentals_factor": 0.07322158744255884,
+      "occ_delta": 0,
+      "vacates_factor": -0.012333333333333085,
+      "asking_rate_adj": 0.8520437741119241,
+      "discount_factor": 0.1
+    },
+    {
+      "month": 3,
+      "rentals_factor": 0.08339941465478307,
+      "occ_delta": 0.003,
+      "vacates_factor": -0.009333333333333083,
+      "asking_rate_adj": 0.921860052266033,
+      "discount_factor": 0.3
+    },
+    {
+      "month": 4,
+      "rentals_factor": 0.08402164688154029,
+      "occ_delta": 0.005,
+      "vacates_factor": -0.004333333333333078,
+      "asking_rate_adj": 0.9268350874935448,
+      "discount_factor": 0.4
+    },
+    {
+      "month": 5,
+      "rentals_factor": 0.10116985126638003,
+      "occ_delta": 0.013,
+      "vacates_factor": 0.008666666666666822,
+      "asking_rate_adj": 0.9584661109949228,
+      "discount_factor": 0.45
+    },
+    {
+      "month": 6,
+      "rentals_factor": 0.09355376555447856,
+      "occ_delta": 0.008,
+      "vacates_factor": 0.01666666666666683,
+      "asking_rate_adj": 0.978064892258173,
+      "discount_factor": 0.45
+    },
+    {
+      "month": 7,
+      "rentals_factor": 0.09074800966557325,
+      "occ_delta": 0.002,
+      "vacates_factor": 0.01866666666666683,
+      "asking_rate_adj": 1.0518114978831814,
+      "discount_factor": 0.3
+    },
+    {
+      "month": 8,
+      "rentals_factor": 0.0890335562452653,
+      "occ_delta": -0.008,
+      "vacates_factor": 0.010666666666666824,
+      "asking_rate_adj": 1.287851995480386,
+      "discount_factor": -0.5
+    },
+    {
+      "month": 9,
+      "rentals_factor": 0.08107727612750912,
+      "occ_delta": -0.006,
+      "vacates_factor": 0.004666666666666819,
+      "asking_rate_adj": 1.1087474809412046,
+      "discount_factor": -0.3
+    },
+    {
+      "month": 10,
+      "rentals_factor": 0.08015655842019768,
+      "occ_delta": -0.006,
+      "vacates_factor": -0.0013333333333331865,
+      "asking_rate_adj": 1.0652312742969103,
+      "discount_factor": -0.15
+    },
+    {
+      "month": 11,
+      "rentals_factor": 0.07687272228754205,
+      "occ_delta": -0.006,
+      "vacates_factor": -0.007333333333333192,
+      "asking_rate_adj": 1.002077982839207,
+      "discount_factor": -0.05
+    },
+    {
+      "month": 12,
+      "rentals_factor": 0.07172128167482314,
+      "occ_delta": -0.005,
+      "vacates_factor": -0.012333333333333196,
+      "asking_rate_adj": 0.9396400595273426,
+      "discount_factor": 1.0
+    }
+  ],
+  "expense": [
+    {
+      "month": 1,
+      "electric_factor": 0.075,
+      "gas_factor": 0.2,
+      "snow_factor": 0.25,
+      "landscape_factor": 0.083,
+      "marketing_campaign_factor": 0,
+      "marketing_factor": 0.05047751597163794
+    },
+    {
+      "month": 2,
+      "electric_factor": 0.075,
+      "gas_factor": 0.2,
+      "snow_factor": 0.4,
+      "landscape_factor": 0.083,
+      "marketing_campaign_factor": 0,
+      "marketing_factor": 0.06003173955178309
+    },
+    {
+      "month": 3,
+      "electric_factor": 0.075,
+      "gas_factor": 0.2,
+      "snow_factor": 0.25,
+      "landscape_factor": 0.2,
+      "marketing_campaign_factor": 0,
+      "marketing_factor": 0.09753120877409484
+    },
+    {
+      "month": 4,
+      "electric_factor": 0.075,
+      "gas_factor": 0.15,
+      "snow_factor": 0,
+      "landscape_factor": 0.1,
+      "marketing_campaign_factor": 0.18,
+      "marketing_factor": 0.07749448367013491
+    },
+    {
+      "month": 5,
+      "electric_factor": 0.075,
+      "gas_factor": 0.05,
+      "snow_factor": 0,
+      "landscape_factor": 0.1,
+      "marketing_campaign_factor": 0.18,
+      "marketing_factor": 0.10052078298771343
+    },
+    {
+      "month": 6,
+      "electric_factor": 0.08,
+      "gas_factor": 0.083,
+      "snow_factor": 0,
+      "landscape_factor": 0.1,
+      "marketing_campaign_factor": 0.18,
+      "marketing_factor": 0.12889882368773273
+    },
+    {
+      "month": 7,
+      "electric_factor": 0.105,
+      "gas_factor": 0.083,
+      "snow_factor": 0,
+      "landscape_factor": 0.1,
+      "marketing_campaign_factor": 0.18,
+      "marketing_factor": 0.09478295911816244
+    },
+    {
+      "month": 8,
+      "electric_factor": 0.105,
+      "gas_factor": 0.083,
+      "snow_factor": 0,
+      "landscape_factor": 0.1,
+      "marketing_campaign_factor": 0.18,
+      "marketing_factor": 0.09011609492635335
+    },
+    {
+      "month": 9,
+      "electric_factor": 0.1,
+      "gas_factor": 0.083,
+      "snow_factor": 0,
+      "landscape_factor": 0.2,
+      "marketing_campaign_factor": 0.1,
+      "marketing_factor": 0.07395268097996666
+    },
+    {
+      "month": 10,
+      "electric_factor": 0.08,
+      "gas_factor": 0.083,
+      "snow_factor": 0,
+      "landscape_factor": 0.1,
+      "marketing_campaign_factor": 0,
+      "marketing_factor": 0.07853074956041332
+    },
+    {
+      "month": 11,
+      "electric_factor": 0.08,
+      "gas_factor": 0.05,
+      "snow_factor": 0,
+      "landscape_factor": 0.083,
+      "marketing_campaign_factor": 0,
+      "marketing_factor": 0.06951216336468262
+    },
+    {
+      "month": 12,
+      "electric_factor": 0.075,
+      "gas_factor": 0.15,
+      "snow_factor": 0.1,
+      "landscape_factor": 0.083,
+      "marketing_campaign_factor": 0,
+      "marketing_factor": 0.07815079740732477
+    }
+  ]
+}

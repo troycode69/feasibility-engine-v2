@@ -1,0 +1,6 @@
+# Restoration Task List
+
+- [ ] Create `Feasibility_Engine` directory
+- [ ] Move files from `StorSageHQ/Feasibility_Engine-3` to `Feasibility_Engine`
+- [ ] Verify file presence in normalized workspace
+- [ ] Launch application
