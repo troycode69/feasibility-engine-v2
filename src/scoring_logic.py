@@ -17,6 +17,14 @@ class FeasibilityScorer:
             "competitor": 0,
             "economic": 0
         }
+        # Store last inputs for PDF generation
+        self.last_inputs = {
+            "demographics": {},
+            "supply": {},
+            "site": {},
+            "competitor": {},
+            "economic": {}
+        }
     
     # === DEMOGRAPHICS (25 points max) ===
     
@@ -108,6 +116,14 @@ class FeasibilityScorer:
     
     def calculate_demographics_score(self, population, income, growth, renter_pct, age_pct):
         """Total Demographics Score (25 points max)"""
+        # Store inputs for PDF generation
+        self.last_inputs["demographics"] = {
+            "population": population,
+            "income": income,
+            "growth": growth,
+            "renter_pct": renter_pct,
+            "age_pct": age_pct
+        }
         total = (
             self.score_population_3mi(population) +
             self.score_median_income(income) +
@@ -194,6 +210,12 @@ class FeasibilityScorer:
         return self.score_pipeline_risk_with_rubric(pipeline_sf_per_capita)[0]
     
     def calculate_supply_score(self, sf_per_capita, occupancy, trend, pipeline):
+        self.last_inputs["supply"] = {
+            "sf_per_capita": sf_per_capita,
+            "occupancy": occupancy,
+            "trend": trend,
+            "pipeline": pipeline
+        }
         total = (
             self.score_sf_per_capita(sf_per_capita) +
             self.score_avg_occupancy(occupancy) +
@@ -267,6 +289,12 @@ class FeasibilityScorer:
         return self.score_site_size_with_rubric(size)[0]
     
     def calculate_site_score(self, visibility, access, zoning, size):
+        self.last_inputs["site"] = {
+            "visibility": visibility,
+            "access": access,
+            "zoning": zoning,
+            "size": size
+        }
         total = (
             self.score_visibility(visibility) +
             self.score_access(access) +
@@ -329,6 +357,11 @@ class FeasibilityScorer:
         return self.score_pricing_power_with_rubric(pricing)[0]
     
     def calculate_competitor_score(self, count, quality, pricing):
+        self.last_inputs["competitor"] = {
+            "count": count,
+            "quality": quality,
+            "pricing": pricing
+        }
         total = (
             self.score_competitor_count(count) +
             self.score_competitor_quality(quality) +
@@ -389,6 +422,11 @@ class FeasibilityScorer:
         return self.score_economic_stability_with_rubric(stability)[0]
     
     def calculate_economic_score(self, unemployment, business_growth, stability):
+        self.last_inputs["economic"] = {
+            "unemployment": unemployment,
+            "business_growth": business_growth,
+            "stability": stability
+        }
         total = (
             self.score_unemployment(unemployment) +
             self.score_business_growth(business_growth) +
