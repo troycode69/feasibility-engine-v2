@@ -16,3 +16,8 @@ plotly
 anthropic
 numpy
 weasyprint
+playwright
+geopy
+selenium
+lxml
+pdfplumber
