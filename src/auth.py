@@ -24,11 +24,19 @@ TOKEN_FILE = 'token.json'
 def authenticate_user():
     """
     Authenticates the user via OAuth 2.0 Desktop Flow.
+    Returns None if running in cloud environment without credentials.
     Returns:
-        google.oauth2.credentials.Credentials: The authenticated credentials.
+        google.oauth2.credentials.Credentials or None: The authenticated credentials.
     """
     creds = None
-    
+
+    # Check if running in Streamlit Cloud (no interactive auth possible)
+    is_cloud = os.getenv('STREAMLIT_SHARING_MODE') or not os.path.exists(CLIENT_SECRET_FILE)
+
+    if is_cloud:
+        logger.warning("Running in cloud environment without OAuth credentials. Google features disabled.")
+        return None
+
     # 1. Check for cached token
     if os.path.exists(TOKEN_FILE):
         try:
@@ -47,16 +55,16 @@ def authenticate_user():
             except Exception as e:
                 logger.warning(f"Failed to refresh token: {e}. Initiating new login.")
                 creds = None
-        
+
         if not creds:
             logger.info("Initiating new browser login flow...")
             if not os.path.exists(CLIENT_SECRET_FILE):
                  raise FileNotFoundError(f"Missing {CLIENT_SECRET_FILE}. Please download OAuth Client ID JSON from Google Cloud Console.")
-            
+
             flow = InstalledAppFlow.from_client_secrets_file(
                 CLIENT_SECRET_FILE, SCOPES)
             creds = flow.run_local_server(port=0)
-        
+
         # 3. Save new credentials
         with open(TOKEN_FILE, 'w') as token:
             token.write(creds.to_json())
