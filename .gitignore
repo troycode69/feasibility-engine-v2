@@ -13,3 +13,4 @@ __pycache__/
 
 # Large Files (>100MB) - GitHub Blocker
 venv/lib/python3.13/site-packages/playwright/driver/node
+token.json
