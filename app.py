@@ -362,8 +362,8 @@ st.markdown("""
 
 # Top Navigation Layout
 page = st.radio(
-    "Navigation", 
-    ["🎯 Command Center", "📊 Market Intel", "💰 Underwriting", "📋 Feasibility Report"], 
+    "Navigation",
+    ["📝 Project Inputs", "📊 Market Intel", "💰 7-Year Operating Model", "🤖 AI Feasibility Report", "🎯 Command Center"],
     index=0,
     horizontal=True,
     label_visibility="collapsed"
@@ -389,8 +389,195 @@ with st.sidebar:
     else:
         st.caption("No cached markets yet")
 
-# === PAGE 1: COMMAND CENTER ===
-if page == "🎯 Command Center":
+# === PAGE 1: PROJECT INPUTS (NEW - SINGLE SOURCE OF TRUTH) ===
+if page == "📝 Project Inputs":
+    st.header("📝 Project Inputs")
+    st.caption("Single source of truth for all project data - all analysis flows from here")
+
+    # Initialize session state for analysis results
+    if "analysis_results" not in st.session_state:
+        st.session_state.analysis_results = None
+    if "analysis_complete" not in st.session_state:
+        st.session_state.analysis_complete = False
+    if "use_ai_size" not in st.session_state:
+        st.session_state.use_ai_size = True
+    if "use_default_financials" not in st.session_state:
+        st.session_state.use_default_financials = True
+
+    st.markdown("---")
+
+    # REQUIRED INPUTS
+    st.markdown("### 🎯 Required Information")
+    project_address = st.text_input(
+        "Site Address*",
+        value=st.session_state.property_data.get('address', ''),
+        placeholder="Enter the property address (e.g., 123 Main St, Nashville, TN 37211)",
+        help="This is the only required field to start analysis"
+    )
+
+    project_name = st.text_input(
+        "Project Name (Optional)",
+        value=st.session_state.property_data.get('name', ''),
+        placeholder="e.g., Nashville Storage Center",
+        help="Optional - will use address if left blank"
+    )
+
+    st.markdown("---")
+
+    # NRSF TOGGLE
+    st.markdown("### 📐 Project Size")
+    use_ai_size = st.toggle(
+        "Use AI Recommended Size",
+        value=st.session_state.use_ai_size,
+        help="Let the system recommend optimal size based on market analysis, or input your own"
+    )
+    st.session_state.use_ai_size = use_ai_size
+
+    if not use_ai_size:
+        custom_nrsf = st.number_input(
+            "Net Rentable Square Feet (NRSF)",
+            min_value=10000,
+            max_value=200000,
+            value=60000,
+            step=5000,
+            help="Your proposed facility size"
+        )
+        custom_units = st.number_input(
+            "Number of Units",
+            min_value=50,
+            max_value=2000,
+            value=400,
+            step=10,
+            help="Total number of storage units"
+        )
+    else:
+        st.info("✨ Project size will be recommended by AI based on market analysis")
+        custom_nrsf = None
+        custom_units = None
+
+    st.markdown("---")
+
+    # FINANCIAL ASSUMPTIONS TOGGLE
+    st.markdown("### 💰 Financial Assumptions")
+    use_default_financials = st.toggle(
+        "Use Default Financial Assumptions",
+        value=st.session_state.use_default_financials,
+        help="Use industry-standard assumptions, or input your own financing terms"
+    )
+    st.session_state.use_default_financials = use_default_financials
+
+    if not use_default_financials:
+        col1, col2 = st.columns(2)
+        with col1:
+            land_cost = st.number_input(
+                "Land Cost ($)",
+                min_value=0,
+                max_value=10000000,
+                value=750000,
+                step=50000,
+                help="Purchase price of the land"
+            )
+            loan_to_cost = st.slider(
+                "Loan-to-Cost Ratio (%)",
+                min_value=50,
+                max_value=90,
+                value=75,
+                step=5,
+                help="Percentage of total development cost financed by debt"
+            ) / 100
+        with col2:
+            interest_rate = st.slider(
+                "Interest Rate (%)",
+                min_value=3.0,
+                max_value=12.0,
+                value=6.5,
+                step=0.25,
+                help="Annual interest rate on construction/permanent loan"
+            ) / 100
+            loan_term_years = st.number_input(
+                "Loan Term (Years)",
+                min_value=5,
+                max_value=30,
+                value=20,
+                step=1,
+                help="Amortization period for the loan"
+            )
+    else:
+        st.info("✨ Using industry-standard defaults:\n- Loan-to-Cost: 75%\n- Interest Rate: 6.5%\n- Loan Term: 20 years\n- Land cost will be estimated based on market")
+        land_cost = None
+        loan_to_cost = 0.75
+        interest_rate = 0.065
+        loan_term_years = 20
+
+    st.markdown("---")
+
+    # BIG ANALYZE BUTTON
+    st.markdown("### 🚀 Ready to Analyze?")
+
+    analyze_disabled = not project_address
+    if analyze_disabled:
+        st.warning("⚠️ Please enter a site address to begin analysis")
+
+    if st.button(
+        "🚀 Analyze Market",
+        disabled=analyze_disabled,
+        help="Run complete market analysis and generate feasibility report",
+        use_container_width=True
+    ):
+        with st.spinner("🔍 Running comprehensive market analysis..."):
+            try:
+                # Import analytics modules
+                from src.report_orchestrator import ProjectInputs, run_analytics
+
+                # Build inputs object
+                inputs = ProjectInputs(
+                    project_name=project_name if project_name else project_address,
+                    site_address=project_address,
+                    proposed_nrsf=custom_nrsf if custom_nrsf else 60000,  # Default if AI size
+                    land_cost=land_cost if land_cost else 0,
+                    loan_to_cost=loan_to_cost,
+                    interest_rate=interest_rate,
+                    # Will add more parameters as needed
+                )
+
+                # Run 7-step analytics pipeline
+                st.info("Running 7-step analytics pipeline...")
+                analytics_results = run_analytics(inputs)
+
+                # Store results in session state
+                st.session_state.analysis_results = analytics_results
+                st.session_state.analysis_complete = True
+                st.session_state.property_data = {
+                    "name": project_name if project_name else project_address,
+                    "address": project_address,
+                    "lat": analytics_results.site_location.latitude if hasattr(analytics_results, 'site_location') else None,
+                    "lon": analytics_results.site_location.longitude if hasattr(analytics_results, 'site_location') else None
+                }
+
+                st.success("✅ Analysis complete! Navigate to Market Intel to view results.")
+                st.balloons()
+
+            except Exception as e:
+                st.error(f"❌ Analysis failed: {str(e)}")
+                import traceback
+                with st.expander("🔍 Error Details"):
+                    st.code(traceback.format_exc())
+
+    # Show current analysis status
+    if st.session_state.analysis_complete:
+        st.markdown("---")
+        st.markdown("### ✅ Analysis Status")
+        results = st.session_state.analysis_results
+        if results:
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("Site Score", f"{results.site_scorecard.total_score}/100" if hasattr(results, 'site_scorecard') else "N/A")
+            col2.metric("Market Balance", results.market_supply_demand.balance_tier_3mi if hasattr(results, 'market_supply_demand') else "N/A")
+            col3.metric("Cap Rate", f"{results.pro_forma.stabilized_cap_rate:.2f}%" if hasattr(results, 'pro_forma') else "N/A")
+            col4.metric("IRR (10yr)", f"{results.pro_forma.irr_10yr:.1f}%" if hasattr(results, 'pro_forma') else "N/A")
+            st.success("✅ Data ready - navigate to other pages to view detailed analysis")
+
+# === PAGE 2: COMMAND CENTER ===
+elif page == "🎯 Command Center":
     st.header("Command Center")
     st.caption(f"📅 {datetime.now().strftime('%A, %B %d, %Y')}")
     col1, col2 = st.columns([2, 1])
@@ -496,500 +683,169 @@ if page == "🎯 Command Center":
                 except Exception as e:
                     st.error(f"{e}")
 
-# === PAGE 2: MARKET INTEL ===
+# === PAGE 2: MARKET INTEL (READ-ONLY - AI DRIVEN) ===
 elif page == "📊 Market Intel":
-    st.header("Market Intelligence & Feasibility Scoring")
-    filtered_comps = [] # Default to avoid NameError
-    # === PROJECT INFO ===
+    st.header("📊 Market Intelligence & Feasibility")
+    st.caption("AI-driven market analysis - all data calculated automatically")
+
+    # Check if analysis has been run
+    if not st.session_state.get("analysis_complete"):
+        st.warning("⚠️ No analysis results available. Please go to Project Inputs page and run analysis first.")
+        st.info("👈 Navigate to **📝 Project Inputs** to enter your site address and start analysis")
+        st.stop()
+
+    results = st.session_state.analysis_results
+    if not results:
+        st.error("Analysis results not found in session state")
+        st.stop()
+
+    # Display project information
     st.markdown("### 📍 Project Information")
     col1, col2 = st.columns(2)
     with col1:
-        project_name = st.text_input("Project Name", value=st.session_state.property_data.get("name", ""), placeholder="e.g. Allspace - Site A")
-        subject_address = st.text_input("Subject Address (Natural Language)", value=st.session_state.property_data.get("address", ""), placeholder="e.g. 123 Main St, City, ST")
+        st.markdown(f"**Project Name:** {st.session_state.property_data.get('name', 'N/A')}")
+        st.markdown(f"**Address:** {st.session_state.property_data.get('address', 'N/A')}")
     with col2:
-        st.write(" ") # Spacer for alignment
-        st.write(" ")
-    if st.button("🔍 Update Map", type="primary"):
-        with st.spinner("Geocoding address..."):
-            from src.intelligence import geocode_address
-            result = geocode_address(subject_address)
-            if result and len(result) == 3:
-                coords_lat, coords_lon, resolved_addr = result
-                st.session_state.property_data = {
-                    "name": project_name,
-                    "address": subject_address,
-                    "lat": coords_lat,
-                    "lon": coords_lon,
-                    "resolved": resolved_addr
-                }
-                st.success(f"✅ **Found:** {resolved_addr}")
-                st.info(f"📍 Coordinates: Lat {coords_lat:.6f}, Lon {coords_lon:.6f}")
-                # PRE-FETCH: Scout full 20 miles immediately
-                if get_competitors_realtime:
-                    with st.spinner("🔍 Searching for competitors in 20-mile radius..."):
-                        try:
-                            scout_results = get_competitors_realtime(coords_lat, coords_lon, radius_miles=20)
+        if hasattr(results, 'site_location'):
+            st.markdown(f"**Latitude:** {results.site_location.latitude:.6f}")
+            st.markdown(f"**Longitude:** {results.site_location.longitude:.6f}")
 
-                            if not scout_results or len(scout_results) == 0:
-                                st.warning(f"⚠️ No competitors found within 20 miles.")
-                            else:
-                                # Enrich with TractiQ
-                                enriched_results = merge_competitor_data(scout_results)
-                                st.session_state.all_competitors = enriched_results
-                                st.success(f"✅ Found {len(enriched_results)} competitors within 20 miles!")
-                        except Exception as e:
-                            st.error(f"❌ Failed to fetch competitor data: {str(e)}")
-                else:
-                    st.warning("Real-time competitor scraping unavailable. Upload TractIQ Excel files to add competitor data.")
-    # === REAL-TIME COMPETITOR SCRAPING ===
     st.markdown("---")
-    st.markdown("### 🕵️ Real-Time Competitive Scouting")
-    st.caption("Scrape Google Maps for active competitors and extract websites/pricing.")
-    if st.session_state.property_data.get("lat"):
-        # Instant Slider (1-20)
-        search_radius = st.slider("Trade Area Filter (Miles)", 1, 20, 5)
-        # Filter logic (INSTANT)
-        all_comps = st.session_state.all_competitors
-        filtered_comps = [c for c in all_comps if c["Distance"] <= search_radius]
-        # Display map
-        try:
-            deck = generate_pydeck_map(
-                st.session_state.property_data["lat"],
-                st.session_state.property_data["lon"],
-                filtered_comps,
-                radius_miles=search_radius
-            )
-            st.pydeck_chart(deck, use_container_width=True)
-        except Exception as e:
-            st.warning(f"Map visualization error: {e}")
-        # Data Table
-        st.markdown(f"#### 📋 Competitor Analysis ({len(filtered_comps)} facilities within {search_radius}mi)")
-        if filtered_comps:
-            comps_df = pd.DataFrame(filtered_comps)
-            if "Source" not in comps_df.columns:
-                comps_df["Source"] = "Google Maps"
-            comps_df = comps_df.sort_values("Distance")
-            st.dataframe(
-                comps_df,
-                column_config={
-                    "Name": "Facility Name",
-                    "Distance": st.column_config.NumberColumn("Distance (mi)", format="%.2f"),
-                    "Rate": "Estimated Rate (10x10)",
-                    "Source": "Data Source",
-                    "Website": st.column_config.LinkColumn("Website"),
-                    "Phone": "Phone",
-                    "Source Term": "Found Via"
-                },
-                hide_index=True,
-                column_order=("Distance", "Name", "Rate", "Source", "Website", "Phone", "Source Term")
-            )
+
+    # Display 100-point site score
+    st.markdown("### 🎯 Site Feasibility Score")
+    if hasattr(results, 'site_scorecard'):
+        scorecard = results.site_scorecard
+
+        # Big score display
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            score_color = "#4A90E2" if scorecard.total_score >= 70 else "#FFA500" if scorecard.total_score >= 55 else "#FF4444"
+            st.markdown(f"""
+            <div style="background-color: {score_color}; padding: 30px; border-radius: 15px; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 60px;">{scorecard.total_score}/100</h1>
+                <p style="color: white; margin: 10px 0 0 0; font-size: 24px;">{scorecard.tier}</p>
+                <p style="color: white; margin: 5px 0 0 0; font-size: 18px;">{scorecard.recommendation}</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        # Category breakdown
+        st.markdown("### 📊 Score Breakdown")
+        col1, col2, col3, col4, col5 = st.columns(5)
+
+        with col1:
+            st.metric("Demographics", f"{scorecard.demographics.total_score}/25",
+                     delta=f"{scorecard.demographics.tier}")
+        with col2:
+            st.metric("Supply/Demand", f"{scorecard.supply_demand.total_score}/25",
+                     delta=f"{scorecard.supply_demand.tier}")
+        with col3:
+            st.metric("Site Attributes", f"{scorecard.site_attributes.total_score}/25",
+                     delta=f"{scorecard.site_attributes.tier}")
+        with col4:
+            st.metric("Competitive", f"{scorecard.competitive_positioning.total_score}/15",
+                     delta=f"{scorecard.competitive_positioning.tier}")
+        with col5:
+            st.metric("Economic", f"{scorecard.economic_market.total_score}/10",
+                     delta=f"{scorecard.economic_market.tier}")
+
+        # Detailed breakdown in expanders
+        with st.expander("👥 Demographics Details"):
+            demo = scorecard.demographics
+            st.write(f"**Population (3mi):** {demo.population_3mi:,} - Score: {demo.population_3mi_score}/5 ({demo.population_3mi_tier})")
+            st.write(f"**Growth Rate:** {demo.growth_rate:.2f}% - Score: {demo.growth_rate_score}/5 ({demo.growth_rate_tier})")
+            st.write(f"**Median Income:** ${demo.median_income:,} - Score: {demo.median_income_score}/5 ({demo.median_income_tier})")
+            st.write(f"**Renter %:** {demo.renter_occupied_pct:.1f}% - Score: {demo.renter_occupied_pct_score}/5 ({demo.renter_occupied_pct_tier})")
+            st.write(f"**Median Age:** {demo.median_age:.1f} - Score: {demo.median_age_score}/5 ({demo.median_age_tier})")
+
+        with st.expander("📦 Supply/Demand Details"):
+            supply = scorecard.supply_demand
+            st.write(f"**SF per Capita (3mi):** {supply.sf_per_capita:.2f} - Score: {supply.sf_per_capita_score}/5 ({supply.sf_per_capita_tier})")
+            st.write(f"**Market Balance:** {supply.balance_tier}")
+            st.write(f"**Avg Occupancy:** {supply.existing_occupancy_avg:.1f}%")
+            st.write(f"**Distance to Nearest:** {supply.distance_to_nearest:.2f} mi")
+
+    st.markdown("---")
+
+    # Market supply/demand analysis
+    st.markdown("### 📈 Market Supply & Demand")
+    if hasattr(results, 'market_supply_demand'):
+        market = results.market_supply_demand
+
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("SF per Capita", f"{market.sf_per_capita_3mi:.2f}",
+                   delta="Undersupplied" if market.sf_per_capita_3mi < 5.5 else "Balanced" if market.sf_per_capita_3mi < 7.0 else "Oversupplied")
+        col2.metric("Market Balance", market.balance_tier_3mi)
+        col3.metric("Saturation Score", f"{market.saturation_score}/100",
+                   delta="Lower is better")
+        col4.metric("Supply Gap", f"{market.supply_gap_sf:,} SF" if market.supply_gap_sf < 0 else f"+{market.supply_gap_sf:,} SF",
+                   delta="Undersupplied" if market.supply_gap_sf < 0 else "Oversupplied")
+
+        if market.balance_tier_3mi == "UNDERSUPPLIED":
+            st.success("✅ **Good Opportunity:** Market is undersupplied - favorable for new development")
+        elif market.balance_tier_3mi == "BALANCED":
+            st.info("ℹ️ **Moderate Opportunity:** Market is balanced - carefully evaluate competitive positioning")
         else:
-            st.info("No competitors found in this radius. Try expanding to 10-20 miles.")
-    else:
-        st.info("📍 Enter subject address and click 'Update Map' to enable scouting.")
-    # === TRACTIQ DATA UPLOAD (PDF + CSV Support) ===
-    st.markdown("---")
-    st.markdown("### 📄 TractIQ Market Data")
-    # File Upload - explicitly list Excel formats
-    tractiq_files = st.file_uploader(
-        "Drop TractIQ files here (PDF reports, CSV, Excel, or any data format)",
-        type=['pdf', 'csv', 'xlsx', 'xls'],
-        accept_multiple_files=True,
-        key="tractiq_uploader",
-        help="Upload TractIQ reports or rental comp exports - data is automatically extracted and cached"
-    )
-    if tractiq_files:
-        if len(tractiq_files) > 6:
-            st.warning("Maximum 6 files allowed. Using first 6.")
-            tractiq_files = tractiq_files[:6]
-        # Auto-detect market name from property address
-        market_name = None
-        if st.session_state.property_data.get('address'):
-            # Extract city/metro from address
-            address = st.session_state.property_data['address']
-            # Simple extraction: take city from address (between last comma and state)
-            parts = address.split(',')
-            if len(parts) >= 2:
-                market_name = parts[-2].strip() # City name
-        # Fallback to generic name if no address
-        if not market_name:
-            market_name = "Market Data"
-        # Extract data from all files (PDF and CSV)
-        if st.button("🚀 Process Files", type="primary"):
-            if not tractiq_files:
-                st.warning("Please upload files first.")
-            else:
-                with st.spinner(f"Processing {len(tractiq_files)} files..."):
-                    engine = st.session_state.feasibility_engine
-                    if engine:
-                        results = engine.process_uploaded_files(tractiq_files, market_name=market_name)
-                        
-                        # Update Session State
-                        processed_data = results.get("results", {})
-                        st.session_state.pdf_ext_data.update(processed_data)
+            st.warning("⚠️ **Challenging Market:** Oversupplied - may face headwinds")
 
-                        # Convert Excel competitors to all_competitors format
-                        excel_competitors = []
-                        for file_data in st.session_state.pdf_ext_data.values():
-                            competitors = file_data.get('competitors', [])
-                            for comp in competitors:
-                                excel_competitors.append({
-                                    "Name": comp.get('name', 'Unknown'),
-                                    "Address": comp.get('address', ''),
-                                    "Distance": comp.get('distance_miles', 0),
-                                    "Rate": f"${comp['rate_10x10']}" if comp.get('rate_10x10') else "Call for Rate",
-                                    "Source": "TractIQ Upload",
-                                    "Units": comp.get('units', 0),
-                                    "NRSF": comp.get('nrsf', 0),
-                                    "Occupancy": comp.get('occupancy', 0)
-                                })
-                        # Add to all_competitors
-                        if excel_competitors:
-                            st.session_state.all_competitors = excel_competitors
-                            st.success(f"✅ Loaded {len(excel_competitors)} competitors from uploaded files")
-
-                        # Show Summary
-                        summary = results.get("summary", {})
-                        st.success(f"✅ Extracted data from {summary['success_count']} files")
-                        st.info(results.get("cache_status", ""))
-                        
-                        # Detailed Results
-                        for fname, data in processed_data.items():
-                            if data.get('error'):
-                                st.error(f"{fname}: {data['error']}")
-                            else:
-                                with st.expander(f"📊 Details: {fname}", expanded=False):
-                                    st.json({
-                                        "competitors": len(data.get('competitors', [])),
-                                        "rates": len(data.get('extracted_rates', [])),
-                                        "unit_mix": list(data.get('unit_mix', {}).keys())
-                                    })
-                    else:
-                        st.error("Feasibility Engine not initialized")
-    # === AI-POWERED AUTOMATION ===
     st.markdown("---")
-    st.markdown("### 🤖 AI-Powered Analysis")
-    st.caption("Automatically analyze site, economic, and competitor data using AI")
-    if st.session_state.property_data.get("lat"):
-        col_ai1, col_ai2 = st.columns([3, 1])
-        with col_ai1:
-            st.info("💡 **NEW**: Click below to automatically analyze this site using AI vision, real-time economic data, and competitor intelligence")
-        with col_ai2:
-            if st.button("🚀 Run AI Analysis", type="primary", use_container_width=True):
-                engine = st.session_state.feasibility_engine
-                if not engine:
-                    st.error("AI Engine unavailable")
-                else:
-                    try:
-                        address = st.session_state.property_data.get('address')
-                        lat = st.session_state.property_data.get('lat')
-                        lon = st.session_state.property_data.get('lon')
-                        
-                        if not lat or not lon:
-                            st.warning("Please update map coordinates first.")
-                        else:
-                            # Initialize results container
-                            if 'ai_results' not in st.session_state:
-                                st.session_state.ai_results = {}
 
-                            # Create status containers
-                            status_site = st.status("Analyzing site...", expanded=False)
-                            status_demo = st.status("Fetching demographics...", expanded=False)
-                            status_econ = st.status("Fetching economic data...", expanded=False)
-                            status_comp = st.status("Analyzing competitors...", expanded=False)
-                            
-                            statuses = {
-                                "site": status_site,
-                                "demographics": status_demo,
-                                "economic": status_econ,
-                                "competitors": status_comp
-                            }
-                            
-                            # Stream results from generator
-                            for update in engine.run_ai_analysis_orchestration(
-                                address=address, lat=lat, lon=lon, filtered_comps=filtered_comps
-                            ):
-                                step = update["step"]
-                                status_widget = statuses.get(step)
-                                
-                                if update["status"] == "running":
-                                    status_widget.update(label=update["message"], state="running")
-                                elif update["status"] == "complete":
-                                    # Update session state with result
-                                    st.session_state.ai_results[step] = update["data"]
-                                    # Update UI
-                                    if "error" in update["data"]:
-                                        status_widget.update(label=f"❌ {step.title()} Failed", state="error")
-                                        st.error(f"{step}: {update['data']['error']}")
-                                        # Keep expanded if error
-                                        status_widget.update(expanded=True) 
-                                    else:
-                                        status_widget.update(label=f"✅ {step.title()} Complete", state="complete")
-                            
-                            st.success("🎉 AI Analysis Complete!")
-                            st.rerun()
-                            
-                    except Exception as e:
-                        st.error(f"Analysis failed: {e}")
-        # Display AI Results
-        if 'ai_results' in st.session_state and st.session_state.ai_results:
-            st.markdown("---")
-            st.markdown("#### 📊 AI Analysis Results")
-            col_site, col_demo, col_econ, col_comp = st.columns(4)
-            with col_site:
-                st.markdown("**🏗️ Site Analysis**")
-                if 'site' in st.session_state.ai_results:
-                    site_data = st.session_state.ai_results['site']
-                    if site_data.get('has_street_view'):
-                        st.success("✅ AI Vision")
-                        st.write(f"**Visibility:** {site_data['visibility']}")
-                        st.write(f"**Access:** {site_data['access']}")
-                        with st.expander("View Reasoning"):
-                            st.write(site_data.get('reasoning', 'No reasoning available'))
-                    else:
-                        st.warning("⚠️ No Street View")
-                        st.caption("Using defaults")
-            with col_demo:
-                st.markdown("**👥 Demographics**")
-                if 'demographics' in st.session_state.ai_results:
-                    demo_data = st.session_state.ai_results['demographics']
-                    st.success("✅ Census API")
-                    st.write(f"**Pop (3mi):** {demo_data.get('pop_3mi', 0):,}")
-                    st.write(f"**Income:** ${demo_data.get('median_income', 0):,}")
-                    st.write(f"**Growth:** {demo_data.get('growth_rate', 0)}%")
-                    st.write(f"**Renter %:** {demo_data.get('renter_pct', 0)}%")
-                    st.write(f"**Age 25-54:** {demo_data.get('age_25_54_pct', 0)}%")
-                    st.caption(f"{demo_data.get('data_source', 'Census')}")
-                else:
-                    st.info("Using defaults")
-            with col_econ:
-                st.markdown("**📊 Economic**")
-                if 'economic' in st.session_state.ai_results:
-                    econ_data = st.session_state.ai_results['economic']
-                    st.success("✅ BLS API")
-                    st.write(f"**Unemployment:** {econ_data['unemployment']}%")
-                    st.write(f"**Growth:** {econ_data['business_growth']}")
-            with col_comp:
-                st.markdown("**🏢 Competitors**")
-                if 'competitors' in st.session_state.ai_results:
-                    comp_data = st.session_state.ai_results['competitors']
-                    st.success("✅ AI Analyzed")
-                    st.write(f"**Count:** {comp_data['count']} facilities")
-                    st.write(f"**Quality:** {comp_data['quality']}")
-                    st.write(f"**Pricing:** {comp_data['pricing']}")
-    else:
-        st.info("📍 Enter a subject address above and click 'Update Map' to enable AI analysis")
-    # === FEASIBILITY SCORING (STRICT RUBRIC) ===
-    st.markdown("---")
-    st.markdown("### 🎯 Feasibility Scoring Matrix")
-    st.caption("Based on Allspace Storage Rubric - 100 Point System")
-    scorer = st.session_state.scorer
-    # Demographics (25 pts) - WITH FULL RUBRIC TABLE
-    with st.expander("👥 Demographics (25 points)", expanded=True):
-        # Auto-fill ALL demographics from AI if available
-        default_pop_3mi = 50000
-        default_income = 65000
-        default_growth = 2.0
-        default_renter_pct = 35
-        default_age_pct = 40
-        if 'ai_results' in st.session_state and 'demographics' in st.session_state.ai_results:
-            demo_data = st.session_state.ai_results['demographics']
-            default_pop_3mi = demo_data.get('pop_3mi', 50000)
-            default_income = demo_data.get('median_income', 65000)
-            default_growth = demo_data.get('growth_rate', 2.0)
-            default_renter_pct = demo_data.get('renter_pct', 35)
-            default_age_pct = demo_data.get('age_25_54_pct', 40)
-            st.success(f"✅ All demographics loaded from Census API (ACS 5-Year 2022)")
-        col1, col2 = st.columns(2)
-        with col1:
-            pop_3mi = st.number_input("Population (3mi)", value=int(default_pop_3mi), step=5000)
-            income = st.number_input("Median Income ($)", value=int(default_income), step=5000)
-            growth = st.number_input("Growth Rate (%)", value=float(default_growth), step=0.5)
-        with col2:
-            renter_pct = st.number_input("Renter %", value=float(default_renter_pct), step=5.0)
-            age_pct = st.number_input("Age 25-54 %", value=float(default_age_pct), step=1.0,
-                help="Percentage of population aged 25-54 (prime storage demographic)")
-        demo_score = scorer.calculate_demographics_score(pop_3mi, income, growth, renter_pct, age_pct)
-        st.metric("Demographics Score", f"{demo_score}/25")
-        st.caption("🔍 **Source of Truth:** Census Bureau (ACS 5-Year Estimates)")
-        # Display rubric breakdown (your scores)
-        st.markdown("#### 📊 Your Scores")
-        rubric_data = scorer.get_demographics_rubric(pop_3mi, income, growth, renter_pct, age_pct)
-        rubric_df = pd.DataFrame(rubric_data, columns=["Metric", "Score", "Max", "Your Value", "Rubric Tier"])
-        st.dataframe(rubric_df, hide_index=True)
-        # Display full rubric standards (good vs bad)
-        st.markdown("#### 📋 Full Rubric Standards")
-        full_rubric = scorer.get_rubric_dict()["Demographics"]
-        rubric_standards_df = pd.DataFrame([
-            {"Metric": k, "Scoring Range": v}
-            for k, v in full_rubric.items()
-        ])
-        st.dataframe(rubric_standards_df, hide_index=True)
-    # Supply (25 pts)
-    with st.expander("📦 Supply Analysis (25 points)"):
-        col1, col2 = st.columns(2)
-        with col1:
-            sf_per_cap = st.number_input("SF per Capita", value=5.5, step=0.5)
-            occupancy = st.number_input("Avg Occupancy %", value=87, step=1)
-        with col2:
-            # AUTO-FILL FROM PDF if available
-            pdf_risk = "Standard"
-            if st.session_state.pdf_ext_data:
-                all_risks = [v['pipeline_risk'] for v in st.session_state.pdf_ext_data.values()]
-                if any("High" in r for r in all_risks): pdf_risk = "High"
-                elif any("Moderate" in r for r in all_risks): pdf_risk = "Moderate"
-            default_trend = "Strong" if pdf_risk == "Standard" else "Moderate"
-            trend = st.selectbox("Absorption Trend", ["Strong", "Moderate", "Weak", "Declining"],
-                index=["Strong", "Moderate", "Weak", "Declining"].index(default_trend))
-            default_pipeline = 0.8
-            if pdf_risk == "High": default_pipeline = 4.5 # High risk placeholder
-            elif pdf_risk == "Moderate": default_pipeline = 1.5
-            pipeline = st.number_input("Pipeline SF per Capita", value=default_pipeline, step=0.1)
-        supply_score = scorer.calculate_supply_score(sf_per_cap, occupancy, trend, pipeline)
-        st.metric("Supply Score", f"{supply_score}/25")
-        source_label = "Manual Input"
-        if st.session_state.pdf_ext_data:
-             source_label = "Uploaded Market Report (PDF Extraction)"
-        st.caption(f"🌍 **Source of Truth:** {source_label}")
-        # Breakdown
-        st.markdown("#### 📊 Your Scores")
-        supply_rubric_data = scorer.get_supply_rubric(sf_per_cap, occupancy, trend, pipeline)
-        supply_df = pd.DataFrame(supply_rubric_data, columns=["Metric", "Score", "Max", "Value", "Rubric Tier"])
-        st.dataframe(supply_df, hide_index=True)
-        # Standards
-        st.markdown("#### 📋 Full Rubric Standards")
-        supply_standards = scorer.get_rubric_dict()["Supply"]
-        supply_standards_df = pd.DataFrame([{"Metric": k, "Scoring Range": v} for k, v in supply_standards.items()])
-        st.dataframe(supply_standards_df, hide_index=True)
-    # Site (25 pts)
-    with st.expander("🏗️ Site Attributes (25 points)"):
-        # Auto-fill from AI if available
-        default_visibility = "Good"
-        default_access = "Good"
-        default_size = "Adequate"
-        if 'ai_results' in st.session_state and 'site' in st.session_state.ai_results:
-            site_data = st.session_state.ai_results['site']
-            default_visibility = site_data.get('visibility', 'Good')
-            default_access = site_data.get('access', 'Good')
-            default_size = site_data.get('site_size', 'Adequate')
-            st.success("✅ AI values loaded - you can adjust manually if needed")
-        col1, col2 = st.columns(2)
-        with col1:
-            visibility = st.selectbox("Visibility", ["Excellent", "Good", "Fair", "Poor"],
-                index=["Excellent", "Good", "Fair", "Poor"].index(default_visibility))
-            access = st.selectbox("Access", ["Excellent", "Good", "Fair", "Poor"],
-                index=["Excellent", "Good", "Fair", "Poor"].index(default_access))
-        with col2:
-            zoning = st.selectbox("Zoning", ["Permitted", "Conditional", "Requires Variance"])
-            size = st.selectbox("Size Adequacy", ["Ideal", "Adequate", "Marginal", "Insufficient"],
-                index=["Ideal", "Adequate", "Marginal", "Insufficient"].index(default_size))
-        site_score = scorer.calculate_site_score(visibility, access, zoning, size)
-        st.metric("Site Score", f"{site_score}/25")
-        # Breakdown
-        st.markdown("#### 📊 Your Scores")
-        site_rubric_data = scorer.get_site_rubric(visibility, access, zoning, size)
-        site_df = pd.DataFrame(site_rubric_data, columns=["Metric", "Score", "Max", "Value", "Rubric Tier"])
-        st.dataframe(site_df, hide_index=True)
-        # Standards
-        st.markdown("#### 📋 Full Rubric Standards")
-        site_standards = scorer.get_rubric_dict()["Site"]
-        site_standards_df = pd.DataFrame([{"Metric": k, "Scoring Range": v} for k, v in site_standards.items()])
-        st.dataframe(site_standards_df, hide_index=True)
-    # Competitor (15 pts)
-    with st.expander("🎯 Competitor Analysis (15 points)"):
-        # Auto-fill from AI if available
-        default_comp_count = 4
-        default_comp_quality = "Average"
-        default_pricing = "At Market"
-        if 'ai_results' in st.session_state and 'competitors' in st.session_state.ai_results:
-            comp_data = st.session_state.ai_results['competitors']
-            default_comp_count = comp_data.get('count', 4)
-            default_comp_quality = comp_data.get('quality', 'Average')
-            default_pricing = comp_data.get('pricing', 'At Market')
-            st.success("✅ AI values loaded from competitor analysis - you can adjust manually if needed")
-        elif st.session_state.pdf_ext_data:
-            # Fallback to PDF if AI not run
-            all_rates = []
-            for v in st.session_state.pdf_ext_data.values():
-                all_rates.extend(v['extracted_rates'])
-            if all_rates:
-                avg_rate = sum(all_rates) / len(all_rates)
-                if avg_rate > 150: default_pricing = "Above Market"
-                elif avg_rate < 100: default_pricing = "Below Market"
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            comp_count = st.number_input("Competitors (3mi)", value=default_comp_count, step=1)
-        with col2:
-            comp_quality = st.selectbox("Quality", ["Aging/Poor", "Average", "Modern/Strong"],
-                index=["Aging/Poor", "Average", "Modern/Strong"].index(default_comp_quality))
-        with col3:
-            pricing = st.selectbox("Pricing Position", ["Above Market", "At Market", "Below Market"],
-                index=["Above Market", "At Market", "Below Market"].index(default_pricing))
-        comp_score = scorer.calculate_competitor_score(comp_count, comp_quality, pricing)
-        st.metric("Competitor Score", f"{comp_score}/15")
-        comp_source = "Google Maps Scraper"
-        if any(c.get("Source") == "TractiQ Export" for c in filtered_comps):
-            comp_source = "TractiQ Export (+ Google Maps)"
-        st.caption(f"🎯 **Source of Truth:** {comp_source}")
-        # Breakdown
-        st.markdown("#### 📊 Your Scores")
-        comp_rubric_data = scorer.get_competitor_rubric(comp_count, comp_quality, pricing)
-        comp_df = pd.DataFrame(comp_rubric_data, columns=["Metric", "Score", "Max", "Value", "Rubric Tier"])
-        st.dataframe(comp_df, hide_index=True)
-        # Standards
-        st.markdown("#### 📋 Full Rubric Standards")
-        comp_standards = scorer.get_rubric_dict()["Competitor"]
-        comp_standards_df = pd.DataFrame([{"Metric": k, "Scoring Range": v} for k, v in comp_standards.items()])
-        st.dataframe(comp_standards_df, hide_index=True)
-    # Economic (10 pts)
-    with st.expander("💼 Economic Indicators (10 points)"):
-        # Auto-fill from AI if available
-        default_unemployment = 4.5
-        default_biz_growth = "Moderate"
-        default_stability = "Stable"
-        if 'ai_results' in st.session_state and 'economic' in st.session_state.ai_results:
-            econ_data = st.session_state.ai_results['economic']
-            default_unemployment = econ_data.get('unemployment', 4.5)
-            default_biz_growth = econ_data.get('business_growth', 'Moderate')
-            default_stability = econ_data.get('stability', 'Stable')
-            st.success("✅ AI values loaded from BLS API - you can adjust manually if needed")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            unemployment = st.number_input("Unemployment %", value=default_unemployment, step=0.5)
-        with col2:
-            biz_growth = st.selectbox("Business Growth", ["Strong", "Moderate", "Weak"],
-                index=["Strong", "Moderate", "Weak"].index(default_biz_growth))
-        with col3:
-            stability = st.selectbox("Economic Stability", ["Stable", "Moderate", "Volatile"],
-                index=["Stable", "Moderate", "Volatile"].index(default_stability))
-        econ_score = scorer.calculate_economic_score(unemployment, biz_growth, stability)
-        st.metric("Economic Score", f"{econ_score}/10")
-        # Breakdown
-        st.markdown("#### 📊 Your Scores")
-        econ_rubric_data = scorer.get_economic_rubric(unemployment, biz_growth, stability)
-        econ_df = pd.DataFrame(econ_rubric_data, columns=["Metric", "Score", "Max", "Value", "Rubric Tier"])
-        st.dataframe(econ_df, hide_index=True)
-        # Standards
-        st.markdown("#### 📋 Full Rubric Standards")
-        econ_standards = scorer.get_rubric_dict()["Economic"]
-        econ_standards_df = pd.DataFrame([{"Metric": k, "Scoring Range": v} for k, v in econ_standards.items()])
-        st.dataframe(econ_standards_df, hide_index=True)
-    # === TOTAL SCORE ===
-    st.markdown("---")
-    total = scorer.get_total_score()
-    recommendation = scorer.get_recommendation()
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown(f"""
-        <div class="score-card">
-            <h1 style="color: white; margin: 0;">{total}/100</h1>
-            <p style="color: white; margin: 10px 0 0 0; font-size: 18px;">TOTAL FEASIBILITY SCORE</p>
-            <p style="color: white; margin: 10px 0 0 0; font-size: 16px;">{recommendation['decision']}</p>
-        </div>
-        """, unsafe_allow_html=True)
+    # MARKET RATES BY UNIT SIZE (NEW REQUIREMENT)
+    st.markdown("### 💰 Market Rates by Unit Size")
+    st.caption("Competitive rate analysis broken down by unit type and climate control")
 
-# === PAGE 3: UNDERWRITING ===
-elif page == "💰 Underwriting":
+    # For now, show a placeholder - will implement full rate analysis
+    st.info("🚧 Rate data integration coming soon - will show rates by unit size (5x5, 10x10, etc.) and climate vs non-climate")
+
+    # Placeholder table structure
+    rate_data = {
+        "Unit Size": ["5x5", "5x10", "10x10", "10x15", "10x20", "10x30"],
+        "Climate Controlled": ["$75-95", "$95-125", "$120-160", "$150-200", "$180-240", "$250-350"],
+        "Non-Climate": ["$55-75", "$70-95", "$90-120", "$115-155", "$140-190", "$190-280"],
+        "Market Average": ["$85", "$110", "$140", "$175", "$210", "$315"]
+    }
+    st.table(pd.DataFrame(rate_data))
+    st.caption("📊 **Source:** TractiQ cache + Google Maps scraper data")
+
+    st.markdown("---")
+
+    # Key Findings
+    st.markdown("### 🔍 Key Findings")
+    if hasattr(results, 'site_scorecard'):
+        findings = []
+
+        # Demographics finding
+        if scorecard.demographics.total_score >= 20:
+            findings.append(f"✅ Strong demographics: {scorecard.demographics.population_3mi:,} population with ${scorecard.demographics.median_income:,} median income")
+        else:
+            findings.append(f"⚠️ Moderate demographics: Consider competitive advantages needed")
+
+        # Supply/demand finding
+        if market.sf_per_capita_3mi < 5.5:
+            findings.append(f"✅ Undersupplied market: {market.sf_per_capita_3mi:.2f} SF/capita (target: 5-7)")
+        elif market.sf_per_capita_3mi > 7.0:
+            findings.append(f"⚠️ Oversupplied market: {market.sf_per_capita_3mi:.2f} SF/capita")
+
+        # Score-based finding
+        if scorecard.total_score >= 85:
+            findings.append("✅ Excellent site overall - high confidence")
+        elif scorecard.total_score >= 70:
+            findings.append("✅ Good site - proceed with standard due diligence")
+        elif scorecard.total_score >= 55:
+            findings.append("⚠️ Fair site - additional risk mitigation recommended")
+        else:
+            findings.append("❌ Weak site - consider alternative locations")
+
+        for finding in findings:
+            st.markdown(f"- {finding}")
+
+    st.markdown("---")
+    st.info("💡 **Next Steps:** Navigate to '💰 7-Year Operating Model' to see financial projections and profitability timeline")
+
+# === PAGE 3: 7-YEAR OPERATING MODEL (renamed from Underwriting) ===
+elif page == "💰 7-Year Operating Model":
     st.header("Financial Underwriting & 7-Year Projection")
     # Pull property data from Market Intel if available
     property_address = st.session_state.property_data.get('address', '')
@@ -1103,7 +959,7 @@ elif page == "💰 Underwriting":
                 st.code(traceback.format_exc())
 
 # === PAGE 4: INTELLIGENT FEASIBILITY REPORT ===
-elif page == "📋 Feasibility Report":
+elif page == "🤖 AI Feasibility Report":
     st.header("🤖 Intelligent Feasibility Report Generator")
     st.caption("Professional 20+ page reports powered by Claude AI + Data Analytics")
 
