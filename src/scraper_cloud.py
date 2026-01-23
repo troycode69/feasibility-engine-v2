@@ -119,14 +119,42 @@ def get_competitors_realtime_cloud(target_lat, target_lon, radius_miles=5):
 
                 for idx, result in enumerate(results[:20]):  # Limit to 20 per query
                     try:
-                        name_elem = result.find_element(By.CSS_SELECTOR, "a[href*='maps']")
-                        name = name_elem.text.strip()
+                        # Try multiple selectors for the business name
+                        name = None
+                        name_elem = None
+
+                        # Attempt 1: Link with aria-label
+                        try:
+                            name_elem = result.find_element(By.CSS_SELECTOR, "a[aria-label]")
+                            name = name_elem.get_attribute('aria-label')
+                            if name:
+                                print(f"         [Result {idx}] Found name via aria-label: {name[:30]}")
+                        except:
+                            pass
+
+                        # Attempt 2: Link text
+                        if not name:
+                            try:
+                                name_elem = result.find_element(By.CSS_SELECTOR, "a[href*='maps']")
+                                name = name_elem.text.strip()
+                                if name:
+                                    print(f"         [Result {idx}] Found name via link text: {name[:30]}")
+                            except:
+                                pass
+
+                        # Attempt 3: Any text in the article
+                        if not name:
+                            name = result.text.strip().split('\n')[0] if result.text else None
+                            if name and len(name) < 100:  # Sanity check
+                                print(f"         [Result {idx}] Found name via article text: {name[:30]}")
 
                         if not name:
-                            print(f"         [Result {idx}] Skipping - no name")
+                            print(f"         [Result {idx}] Skipping - no name found. HTML snippet: {result.get_attribute('innerHTML')[:200]}")
                             continue
 
                         # Get coordinates from URL
+                        if not name_elem:
+                            name_elem = result.find_element(By.CSS_SELECTOR, "a[href*='maps']")
                         href = name_elem.get_attribute('href')
                         lat_match = re.search(r'!3d([\d\.-]+)', href)
                         lon_match = re.search(r'!4d([\d\.-]+)', href)
