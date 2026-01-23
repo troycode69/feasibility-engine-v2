@@ -3,19 +3,47 @@ import pandas as pd
 import os
 import sys
 from datetime import datetime
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
-from config import Config
-from main import SecretaryAgent
-from src.financials import generate_pro_forma, recommend_unit_mix
-from src.crm_adjustor import get_actionable_leads, get_profile_candidates, get_skip_trace_list, run_adjustor_sync
-from src.scoring_logic import FeasibilityScorer
-from src.intelligence import IntelligenceAgent, geocode_address, generate_pydeck_map
-from src.scraper import get_competitors_realtime
-from src.pdf_processor import extract_pdf_data
-from src.leaseup_model import LeaseUpModel
-from src.leaseup_model_v2 import EnhancedLeaseUpModel
-from src.projection_display import render_7year_projection, render_feasibility_score
 import re
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
+
+# Core imports - always needed
+from config import Config
+from src.scoring_logic import FeasibilityScorer
+from src.financials import generate_pro_forma, recommend_unit_mix
+from src.projection_display import render_7year_projection, render_feasibility_score
+
+# Optional imports - gracefully handle failures in cloud environment
+try:
+    from main import SecretaryAgent
+except:
+    SecretaryAgent = None
+
+try:
+    from src.crm_adjustor import get_actionable_leads, get_profile_candidates, get_skip_trace_list, run_adjustor_sync
+except:
+    get_actionable_leads = get_profile_candidates = get_skip_trace_list = run_adjustor_sync = None
+
+try:
+    from src.intelligence import IntelligenceAgent, geocode_address, generate_pydeck_map
+except:
+    IntelligenceAgent = geocode_address = generate_pydeck_map = None
+
+try:
+    from src.scraper import get_competitors_realtime
+except:
+    get_competitors_realtime = None
+
+try:
+    from src.pdf_processor import extract_pdf_data
+except:
+    extract_pdf_data = None
+
+try:
+    from src.leaseup_model import LeaseUpModel
+    from src.leaseup_model_v2 import EnhancedLeaseUpModel
+except:
+    LeaseUpModel = EnhancedLeaseUpModel = None
 # === TRACTIQ DATA INTEGRATION ===
 def load_tractiq_data():
     """
@@ -217,6 +245,8 @@ if page == "🎯 Command Center":
         st.markdown("### 🌅 Dashboard")
         @st.cache_data(ttl=60)
         def get_crm_summary():
+            if SecretaryAgent is None:
+                return 0, 0
             try:
                 agent = SecretaryAgent()
                 data = agent.ingestor.fetch_crm_data()
@@ -236,25 +266,34 @@ if page == "🎯 Command Center":
         tab1, tab2, tab3 = st.tabs(["✅ Actionable", "🎯 Profile", "🔍 Skip Trace"])
         with tab1:
             st.caption("Leads with Phone & Email")
-            actionable = get_actionable_leads(limit=10)
-            if not actionable.empty:
-                st.dataframe(actionable, hide_index=True)
+            if get_actionable_leads is not None:
+                actionable = get_actionable_leads(limit=10)
+                if not actionable.empty:
+                    st.dataframe(actionable, hide_index=True)
+                else:
+                    st.info("No actionable leads")
             else:
-                st.info("No actionable leads")
+                st.info("CRM features unavailable (cloud environment)")
         with tab2:
             st.caption("Status = New/FollowUp")
-            candidates = get_profile_candidates(limit=8)
-            if not candidates.empty:
-                st.dataframe(candidates, hide_index=True)
+            if get_profile_candidates is not None:
+                candidates = get_profile_candidates(limit=8)
+                if not candidates.empty:
+                    st.dataframe(candidates, hide_index=True)
+                else:
+                    st.info("No profile candidates")
             else:
-                st.info("No profile candidates")
+                st.info("CRM features unavailable (cloud environment)")
         with tab3:
             st.caption("Missing contact info")
-            skip_list = get_skip_trace_list(limit=20)
-            if not skip_list.empty:
-                st.dataframe(skip_list, hide_index=True)
+            if get_skip_trace_list is not None:
+                skip_list = get_skip_trace_list(limit=20)
+                if not skip_list.empty:
+                    st.dataframe(skip_list, hide_index=True)
+                else:
+                    st.info("No skip trace needed")
             else:
-                st.info("No skip trace needed")
+                st.info("CRM features unavailable (cloud environment)")
         # === CONTEXT-AWARE AI ===
         st.markdown("---")
         st.markdown("### 🤖 CRM Analyst AI (Gemini Flash)")
