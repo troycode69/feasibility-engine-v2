@@ -221,103 +221,114 @@ def merge_competitor_data(scraper_results):
 # Set page config with logo as icon
 st.set_page_config(page_title="StorSageHQ", page_icon="assets/logo.png", layout="wide")
 
-# === STORSAGE HQ BRANDING ===
+# === STORSAGE HQ BRANDING (THEME LOCKED) ===
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
     
+    /* GLOBAL THEME LOCK - Force Light Mode Colors */
+    :root {
+        --primary-color: #0C2340;
+        --background-color: #F4F6F8;
+        --secondary-background-color: #FFFFFF;
+        --text-color: #0C2340;
+        --font: 'Roboto', sans-serif;
+    }
+
     /* Global Typography */
-    .stMarkdown, .stMarkdown div, .stMarkdown p, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4, .stMarkdown h5, .stMarkdown h6 {
-        font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
+    html, body, [class*="css"] {
+        font-family: 'Roboto', sans-serif !important;
+        background-color: #F4F6F8 !important;
+        color: #0C2340 !important;
+    }
+
+    /* MAIN AREA - High Contrast Light Gray */
+    .stApp {
+        background-color: #F4F6F8 !important;
     }
     
-    /* Background Color */
-    .stApp { background-color: #F4F6F8; } /* Neutral light gray */
+    /* SIDEBAR - Theme Locked Navy */
+    [data-testid="stSidebar"] {
+        background-color: #0C2340 !important;
+        border-right: 1px solid #1A3A5C;
+    }
+    [data-testid="stSidebar"] * {
+        color: #FFFFFF !important;
+    }
+    /* Fix Sidebar Inputs to be readable */
+    [data-testid="stSidebar"] input, [data-testid="stSidebar"] select, [data-testid="stSidebar"] div[role="radiogroup"] {
+        background-color: rgba(255,255,255,0.1) !important;
+        color: #FFFFFF !important;
+    }
+
+    /* WIDGETS & INPUTS - Crisp White on Light Gray */
+    .stTextInput input, .stNumberInput input, .stSelectbox select, .stTextArea textarea {
+        background-color: #FFFFFF !important;
+        color: #333333 !important;
+        border: 1px solid #E0E0E0 !important;
+        border-radius: 4px !important;
+    }
     
-    /* Headers - Navy Blue */
+    /* HEADERS - Navy Blue */
     h1, h2, h3, h4, h5, h6 { 
         color: #0C2340 !important; 
+        font-family: 'Roboto', sans-serif !important;
         font-weight: 700 !important; 
     }
     
-    /* Sidebar - Navy Blue Background, White Text */
-    [data-testid="stSidebar"] { background-color: #0C2340; }
-    [data-testid="stSidebar"] *, [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label { 
-        color: white !important; 
-    }
-    
-    /* Buttons - Soft Blue Accent */
+    /* BUTTONS - Soft Blue Accent */
     .stButton>button[kind="primary"] { 
         background-color: #4A90E2 !important; 
         color: white !important; 
-        font-weight: 600 !important; 
         border: none !important;
-        border-radius: 6px !important;
+        border-radius: 4px !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
     }
     .stButton>button[kind="secondary"] { 
-        background-color: transparent !important; 
-        border: 2px solid #0C2340 !important; 
+        background-color: white !important; 
+        border: 1px solid #0C2340 !important; 
         color: #0C2340 !important; 
-        border-radius: 6px !important;
+        border-radius: 4px !important;
     }
-    
-    /* Metrics - Card Style */
+
+    /* METRICS - Card Style */
     div[data-testid="metric-container"] {
         background-color: #FFFFFF !important;
-        border: 1px solid #0C2340 !important; /* Navy Border */
-        padding: 20px !important;
-        border-radius: 10px !important;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05); /* Subtle shadow for lift */
+        border: 1px solid #E6E8EB !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+        border-radius: 8px !important;
+        padding: 15px !important;
     }
     [data-testid="stMetricLabel"] {
         color: #666666 !important;
-        font-size: 14px !important;
-        font-weight: 600 !important;
+        font-size: 0.9rem !important;
+        font-weight: 500 !important;
     }
     [data-testid="stMetricValue"] {
-        font-size: 28px !important;
-        color: #0C2340 !important; /* Navy Value */
+        color: #0C2340 !important;
+        font-family: 'Roboto', sans-serif !important;
         font-weight: 700 !important;
     }
-    
-    /* Expander Styling */
+
+    /* EXPANDERS & CONTAINERS */
     .streamlit-expanderHeader {
         background-color: #FFFFFF !important;
         color: #0C2340 !important;
-        border-radius: 6px !important;
+        font-weight: 600 !important;
+        border-radius: 4px !important;
     }
     
-    /* File Uploader */
-    [data-testid="stFileUploader"] {
-        background-color: #FFFFFF !important;
-        border: 2px dashed #4A90E2 !important; /* Blue dashed border */
-        border-radius: 10px !important;
-        padding: 20px !important;
-    }
-    
-    /* Tooltips and Help */
-    .stTooltipIcon {
-        color: #4A90E2 !important;
+    /* REMOVE PADDING to maximize space */
+    .block-container {
+        padding-top: 2rem !important;
+        padding-bottom: 2rem !important;
     }
 
-    /* Score Card Styling */
-    .score-card {
-        background: linear-gradient(135deg, #0C2340 0%, #1A3A5C 100%);
-        color: white !important;
-        padding: 30px;
-        border-radius: 12px;
-        text-align: center;
-        box-shadow: 0 4px 15px rgba(12, 35, 64, 0.2);
-    }
-    .score-card h1, .score-card p { color: white !important; }
-
-    /* Adjust padding */
-    .block-container { padding-top: 2rem !important; }
 </style>
 """, unsafe_allow_html=True)
-
-# Display the logo prominently at the top
-st.image("assets/logo.png", width=120)
+# st.image("assets/logo.png", width=120)  # Removed from main area
 
 # Session state
 if "ai_assistant" not in st.session_state:
@@ -340,10 +351,10 @@ if "pdf_ext_data" not in st.session_state:
 if "feasibility_engine" not in st.session_state and FeasibilityEngine:
     st.session_state.feasibility_engine = FeasibilityEngine()
 
-st.title("🛡️ StorSageHQ")
-st.caption("AI-Powered Self-Storage Feasibility & Market Intelligence Platform")
-
+# Display the logo and title in a horizontal lockup
 with st.sidebar:
+    st.image("assets/logo.png", use_container_width=True)
+    st.markdown("---")
     st.header("Navigation")
     page = st.radio("Navigation", ["🎯 Command Center", "📊 Market Intel", "💰 Underwriting", "📋 Feasibility Report"], label_visibility="collapsed")
     # TractIQ Cache Management
