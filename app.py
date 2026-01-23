@@ -214,7 +214,7 @@ if "pdf_ext_data" not in st.session_state:
     st.session_state.pdf_ext_data = {}
 
 st.title("🏢 STORAGE OS")
-st.caption("Production Self-Storage Feasibility Platform")
+st.caption("Production Self-Storage Feasibility Platform | v2.0")
 
 with st.sidebar:
     st.header("Navigation")
