@@ -31,10 +31,19 @@ def authenticate_user():
     creds = None
 
     # Check if running in Streamlit Cloud (no interactive auth possible)
-    is_cloud = os.getenv('STREAMLIT_SHARING_MODE') or not os.path.exists(CLIENT_SECRET_FILE)
+    # In cloud, NEVER attempt interactive authentication
+    try:
+        import streamlit
+        # If streamlit is imported in a runtime context, we're in cloud
+        if hasattr(streamlit, 'runtime'):
+            logger.warning("Running in Streamlit Cloud - OAuth disabled.")
+            return None
+    except:
+        pass
 
-    if is_cloud:
-        logger.warning("Running in cloud environment without OAuth credentials. Google features disabled.")
+    # Also check if client secret file is missing
+    if not os.path.exists(CLIENT_SECRET_FILE):
+        logger.warning("No client_secret.json found - OAuth disabled.")
         return None
 
     # 1. Check for cached token
