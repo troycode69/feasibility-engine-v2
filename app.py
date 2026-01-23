@@ -352,13 +352,44 @@ if "feasibility_engine" not in st.session_state and FeasibilityEngine:
     st.session_state.feasibility_engine = FeasibilityEngine()
 
 # Display the logo and title in a horizontal lockup
+# === TOP NAVIGATION BAR ===
+# Custom CSS for the Top Navigation Bar
+st.markdown("""
+<style>
+    /* Top Navigation Container */
+    div[role="radiogroup"] {
+        background-color: #0C2340 !important;
+        padding: 10px 20px !important;
+        border-radius: 8px !important;
+        margin-bottom: 20px !important;
+    }
+    /* Nav Items (Radio Buttons) */
+    div[role="radiogroup"] label {
+        color: #FFFFFF !important;
+        background-color: transparent !important;
+        font-weight: 600 !important;
+    }
+    /* Selected State Highlight */
+    div[role="radiogroup"] label[data-checked="true"] {
+        color: #4A90E2 !important; /* Blue highlight for active tab */
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Top Navigation Layout
+page = st.radio(
+    "Navigation", 
+    ["🎯 Command Center", "📊 Market Intel", "💰 Underwriting", "📋 Feasibility Report"], 
+    index=0,
+    horizontal=True,
+    label_visibility="collapsed"
+)
+
+# Sidebar - Cleaned up (Logo + TractIQ only)
 with st.sidebar:
     st.image("assets/logo.png", use_container_width=True)
     st.markdown("---")
-    st.header("Navigation")
-    page = st.radio("Navigation", ["🎯 Command Center", "📊 Market Intel", "💰 Underwriting", "📋 Feasibility Report"], label_visibility="collapsed")
     # TractIQ Cache Management
-    st.markdown("---")
     st.markdown("### 💾 TractIQ Cache")
     from src.tractiq_cache import list_cached_markets, get_market_stats
     cached_markets = list_cached_markets()
