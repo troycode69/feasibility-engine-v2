@@ -154,31 +154,38 @@ Now respond to user queries based on this data."""
 def geocode_address(address):
     """
     Convert address string to lat/lon coordinates using geopy Nominatim.
-    
+
     Args:
         address: Street address string
-    
+
     Returns:
         tuple: (latitude, longitude, resolved_address) or (lat, lon, None) if failed
     """
     try:
         from geopy.geocoders import Nominatim
-        
+
+        print(f"🌍 Attempting to geocode: '{address}'")
+
         # Create geocoder with updated user agent
-        geolocator = Nominatim(user_agent="storage_os_v2")
-        
-        # Geocode the address
-        location = geolocator.geocode(address, timeout=10)
-        
+        geolocator = Nominatim(user_agent="storage_feasibility_engine_v2", timeout=15)
+
+        # Try geocoding with the full address first
+        location = geolocator.geocode(address, exactly_one=True, addressdetails=True)
+
         if location:
+            print(f"✅ Geocoded to: {location.address}")
+            print(f"   Coordinates: {location.latitude}, {location.longitude}")
             return (location.latitude, location.longitude, location.address)
         else:
+            print(f"⚠️ Geocoding returned no results for: {address}")
             # Fallback to NYC if geocoding fails
-            return (40.7128, -74.0060, "Fallback: New York, NY")
+            return (40.7128, -74.0060, "Fallback: New York, NY (geocoding failed)")
     except Exception as e:
-        print(f"Geocoding failed: {e}")
+        print(f"❌ Geocoding error: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
         # Fallback to NYC coordinates
-        return (40.7128, -74.0060, "Fallback: New York, NY")
+        return (40.7128, -74.0060, f"Fallback: New York, NY (error: {str(e)[:50]})")
 
 
 def generate_mock_competitors_at_radius(center_lat, center_lon):
