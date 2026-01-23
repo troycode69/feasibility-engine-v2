@@ -86,15 +86,18 @@ def get_competitors_realtime_cloud(target_lat, target_lon, radius_miles=5):
         for query in queries:
             try:
                 search_url = f"https://www.google.com/maps/search/{query.replace(' ', '+')}/@{target_lat},{target_lon},13z"
-                print(f"      🔍 Searching: '{query}'")
+                print(f"      🔍 Searching: '{query}' at URL: {search_url}")
 
                 browser.get(search_url)
+                print(f"      ⏳ Page loaded, waiting for results...")
                 time.sleep(3)  # Wait for results to load
 
                 # Wait for results
+                print(f"      ⏳ Waiting for article elements...")
                 WebDriverWait(browser, 10).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, "div[role='article']"))
                 )
+                print(f"      ✅ Found article elements!")
 
                 # Scroll to load more results
                 scrollable = browser.find_element(By.CSS_SELECTOR, "div[role='feed']")
@@ -104,13 +107,15 @@ def get_competitors_realtime_cloud(target_lat, target_lon, radius_miles=5):
 
                 # Extract results
                 results = browser.find_elements(By.CSS_SELECTOR, "div[role='article']")
+                print(f"      📊 Found {len(results)} article elements")
 
-                for result in results[:20]:  # Limit to 20 per query
+                for idx, result in enumerate(results[:20]):  # Limit to 20 per query
                     try:
                         name_elem = result.find_element(By.CSS_SELECTOR, "a[href*='maps']")
                         name = name_elem.text.strip()
 
                         if not name:
+                            print(f"         [Result {idx}] Skipping - no name")
                             continue
 
                         # Get coordinates from URL
@@ -123,6 +128,8 @@ def get_competitors_realtime_cloud(target_lat, target_lon, radius_miles=5):
                             comp_lon = float(lon_match.group(1))
                             distance = geodesic((target_lat, target_lon), (comp_lat, comp_lon)).miles
 
+                            print(f"         [Result {idx}] {name} - {distance:.1f}mi")
+
                             if distance <= radius_miles:
                                 competitors.append({
                                     "Name": name,
@@ -133,7 +140,13 @@ def get_competitors_realtime_cloud(target_lat, target_lon, radius_miles=5):
                                     "Lat": comp_lat,
                                     "Lon": comp_lon
                                 })
+                                print(f"         ✅ Added (within {radius_miles}mi radius)")
+                            else:
+                                print(f"         ❌ Skipped (outside {radius_miles}mi radius)")
+                        else:
+                            print(f"         [Result {idx}] Skipping - no coordinates in URL")
                     except Exception as e:
+                        print(f"         [Result {idx}] Error: {str(e)[:50]}")
                         continue
 
             except Exception as e:
