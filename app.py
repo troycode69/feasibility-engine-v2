@@ -6,8 +6,14 @@ from datetime import datetime
 import re
 
 # VERSION MARKER - Force Streamlit Cloud to update
-APP_VERSION = "2.1.0-SELENIUM-SCRAPER"
+APP_VERSION = "2.2.0-DEBUG-VISIBLE"
 print(f"🚀 Starting Feasibility Engine {APP_VERSION}")
+
+# CRITICAL: Use st.write() early to verify code is deployed
+import streamlit as st
+st.set_page_config(page_title="Storage Feasibility Engine", layout="wide")
+st.sidebar.markdown(f"**App Version:** `{APP_VERSION}`")
+st.sidebar.markdown("🔧 **Debug Mode Active**")
 
 # Add src to path for local imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -76,31 +82,46 @@ try:
     import socket
 
     # Debug environment detection
+    env_runtime = os.getenv('STREAMLIT_RUNTIME_ENV')
+    hostname = os.getenv('HOSTNAME', 'NOT_SET')
+    socket_hostname = socket.gethostname()
+    users_exists = os.path.exists('/Users')
+
     print(f"🔍 ENVIRONMENT DEBUG:")
-    print(f"   STREAMLIT_RUNTIME_ENV: {os.getenv('STREAMLIT_RUNTIME_ENV')}")
-    print(f"   HOSTNAME: {os.getenv('HOSTNAME', 'NOT_SET')}")
-    print(f"   socket.gethostname(): {socket.gethostname()}")
-    print(f"   /Users exists: {os.path.exists('/Users')}")
+    print(f"   STREAMLIT_RUNTIME_ENV: {env_runtime}")
+    print(f"   HOSTNAME: {hostname}")
+    print(f"   socket.gethostname(): {socket_hostname}")
+    print(f"   /Users exists: {users_exists}")
 
     # Multiple detection methods
     is_cloud = (
-        os.getenv('STREAMLIT_RUNTIME_ENV') == 'cloud' or
-        'streamlit' in os.getenv('HOSTNAME', '').lower() or
-        'streamlit' in socket.gethostname().lower() or
-        not os.path.exists('/Users')  # Mac/local usually has /Users
+        env_runtime == 'cloud' or
+        'streamlit' in hostname.lower() or
+        'streamlit' in socket_hostname.lower() or
+        not users_exists  # Mac/local usually has /Users
     )
 
     print(f"   ⚡ Cloud detected: {is_cloud}")
 
+    # VISIBLE UI DEBUG
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("**🔍 Environment Detection:**")
+    st.sidebar.markdown(f"- Cloud Mode: `{is_cloud}`")
+    st.sidebar.markdown(f"- Runtime: `{env_runtime or 'local'}`")
+    st.sidebar.markdown(f"- Hostname: `{socket_hostname[:20]}`")
+
     if is_cloud:
         print("🌩️ FORCING SELENIUM SCRAPER FOR CLOUD")
+        st.sidebar.success("✅ Using Selenium (Cloud)")
         from scraper_cloud import get_competitors_realtime_cloud as get_competitors_realtime
         print(f"   ✅ Selenium scraper loaded: {get_competitors_realtime}")
     else:
         print("💻 Local environment - using Playwright scraper")
+        st.sidebar.info("💻 Using Playwright (Local)")
         from scraper import get_competitors_realtime
 except Exception as e:
     print(f"⚠️ Scraper import failed: {e}")
+    st.sidebar.error(f"❌ Scraper failed: {str(e)[:50]}")
     import traceback
     traceback.print_exc()
 
@@ -451,10 +472,17 @@ elif page == "📊 Market Intel":
                 if get_competitors_realtime:
                     with st.spinner("🚀 Pre-fetching 20-mile trade area data..."):
                         try:
+                            st.info(f"🎯 Calling scraper with: lat={coords_lat:.6f}, lon={coords_lon:.6f}, radius=20mi")
+                            print(f"🎯 SCRAPER CALL: lat={coords_lat}, lon={coords_lon}, radius=20")
+
                             scout_results = get_competitors_realtime(coords_lat, coords_lon, radius_miles=20)
 
+                            print(f"🎯 SCRAPER RETURNED: {len(scout_results) if scout_results else 0} results")
+                            st.info(f"📊 Raw scraper returned: {len(scout_results) if scout_results else 0} results")
+
                             if not scout_results or len(scout_results) == 0:
-                                st.warning(f"Scraper returned 0 competitors. Check Streamlit Cloud logs for errors.")
+                                st.warning(f"⚠️ Scraper returned 0 competitors. Check Streamlit Cloud logs for errors.")
+                                st.warning(f"Debug: scraper function is {get_competitors_realtime}")
                             else:
                                 # Enrich with TractiQ
                                 enriched_results = merge_competitor_data(scout_results)
@@ -463,9 +491,10 @@ elif page == "📊 Market Intel":
                         except Exception as e:
                             import traceback
                             error_details = traceback.format_exc()
-                            st.error(f"Scraper failed: {str(e)}")
-                            with st.expander("Error Details"):
+                            st.error(f"❌ Scraper failed: {str(e)}")
+                            with st.expander("🔍 Full Error Details"):
                                 st.code(error_details)
+                            print(f"❌ SCRAPER EXCEPTION: {error_details}")
                 else:
                     st.warning("Real-time competitor scraping unavailable. Upload TractIQ Excel files to add competitor data.")
     # === REAL-TIME COMPETITOR SCRAPING ===
