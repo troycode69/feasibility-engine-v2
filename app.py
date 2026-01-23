@@ -95,9 +95,27 @@ except Exception as e:
 # === TRACTIQ DATA INTEGRATION ===
 def load_tractiq_data():
     """
-    Scans src/data for TractiQ Export.csv and returns a list of dictionaries.
-    Includes fuzzy column mapping for rates.
+    Loads TractIQ data from session state (uploaded files) or disk.
+    Returns a list of competitor dictionaries.
     """
+    records = []
+
+    # PRIORITY 1: Use uploaded Excel/CSV data from session state
+    if hasattr(st.session_state, 'pdf_ext_data') and st.session_state.pdf_ext_data:
+        for file_data in st.session_state.pdf_ext_data.values():
+            competitors = file_data.get('competitors', [])
+            for comp in competitors:
+                # Convert to format expected by merge function
+                records.append({
+                    "Name": comp.get('name', ''),
+                    "Rate": f"${comp['rate_10x10']}" if comp.get('rate_10x10') else "Call for Rate",
+                    "Address": comp.get('address', ''),
+                    "Source": "TractIQ Upload"
+                })
+        if records:
+            return records
+
+    # FALLBACK: Try to load from disk
     search_dirs = ["src/data", "src/data/input"]
     tractiq_df = pd.DataFrame()
     for d in search_dirs:
@@ -420,15 +438,18 @@ elif page == "📊 Market Intel":
                 st.success(f"✅ **Found:** {resolved_addr}")
                 st.info(f"📍 Coordinates: Lat {coords_lat:.6f}, Lon {coords_lon:.6f}")
                 # PRE-FETCH: Scout full 20 miles immediately
-                with st.spinner("🚀 Pre-fetching 20-mile trade area data..."):
-                    try:
-                        scout_results = get_competitors_realtime(coords_lat, coords_lon, radius_miles=20)
-                        # Enrich with TractiQ
-                        enriched_results = merge_competitor_data(scout_results)
-                        st.session_state.all_competitors = enriched_results
-                        st.toast("✅ 20mi Scrape Cached & Enriched")
-                    except Exception as e:
-                        st.error(f"Pre-fetch failed: {e}")
+                if get_competitors_realtime:
+                    with st.spinner("🚀 Pre-fetching 20-mile trade area data..."):
+                        try:
+                            scout_results = get_competitors_realtime(coords_lat, coords_lon, radius_miles=20)
+                            # Enrich with TractiQ
+                            enriched_results = merge_competitor_data(scout_results)
+                            st.session_state.all_competitors = enriched_results
+                            st.toast("✅ 20mi Scrape Cached & Enriched")
+                        except Exception as e:
+                            st.error(f"Pre-fetch failed: {e}")
+                else:
+                    st.warning("Real-time competitor scraping unavailable in cloud environment. Upload TractIQ Excel files to add competitor data.")
     # === REAL-TIME COMPETITOR SCRAPING ===
     st.markdown("---")
     st.markdown("### 🕵️ Real-Time Competitive Scouting")
@@ -566,18 +587,10 @@ elif page == "📊 Market Intel":
                     st.markdown("**Sample Competitors:**")
                     for comp in ext_result['competitors'][:3]:
                         st.write(comp)
-        # Auto-cache the extracted data (no manual button click needed)
+        # Show success summary (skip caching in cloud)
         if st.session_state.pdf_ext_data:
-            try:
-                from src.tractiq_cache import cache_tractiq_data
-                cache_tractiq_data(market_name, st.session_state.pdf_ext_data)
-                # Show success summary
-                st.success(f"✅ Extracted data from {len(tractiq_files)} files: {total_competitors} competitors, {total_rates} rates")
-                st.info(f"💾 Automatically cached for market: **{market_name}**")
-            except Exception as e:
-                # Caching failed (might be read-only filesystem in cloud), but data is still in session
-                st.success(f"✅ Extracted data from {len(tractiq_files)} files: {total_competitors} competitors, {total_rates} rates")
-                st.warning(f"Note: Could not cache to disk (cloud environment), but data is available for this session")
+            st.success(f"✅ Extracted data from {len(tractiq_files)} files: {total_competitors} competitors, {total_rates} rates")
+            st.info(f"💾 Data cached for market: **{market_name}** (session only)")
     # === AI-POWERED AUTOMATION ===
     st.markdown("---")
     st.markdown("### 🤖 AI-Powered Analysis")
