@@ -24,17 +24,33 @@ def get_exact_coords(address):
     """
     import threading
     import queue
-    
+    import os
+
     print(f"📍 Precision Geocoding for: {address}")
     res_queue = queue.Queue()
-    
+
     def _thread_wrapper():
         try:
             with sync_playwright() as p:
-                browser = p.chromium.launch(
-                    headless=True,
-                    args=["--disable-blink-features=AutomationControlled"]
-                )
+                # Use system chromium in cloud environment
+                browser_args = [
+                    "--disable-blink-features=AutomationControlled",
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage"
+                ]
+
+                launch_options = {
+                    "headless": True,
+                    "args": browser_args
+                }
+
+                # Try to use system chromium if available
+                chromium_path = os.getenv('CHROMIUM_PATH', '/usr/bin/chromium')
+                if os.path.exists(chromium_path):
+                    launch_options["executable_path"] = chromium_path
+
+                browser = p.chromium.launch(**launch_options)
                 context = browser.new_context(
                     user_agent=USER_AGENT,
                     viewport={"width": 1280, "height": 720}
