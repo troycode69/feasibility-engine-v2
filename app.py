@@ -391,13 +391,13 @@ elif page == "📊 Market Intel":
     # === TRACTIQ DATA UPLOAD (PDF + CSV Support) ===
     st.markdown("---")
     st.markdown("### 📄 TractIQ Market Data")
-    # File Upload - accepts both PDF and CSV
+    # File Upload - accepts all file types including Excel
     tractiq_files = st.file_uploader(
-        "Drop TractIQ files here (PDF reports or CSV rental comps)",
-        type=['pdf', 'csv'],
+        "Drop TractIQ files here (PDF reports, CSV, Excel, or any data format)",
+        type=None,
         accept_multiple_files=True,
         key="tractiq_uploader",
-        help="Upload TractIQ reports (PDFs) or rental comp exports (CSV) - data is automatically extracted and cached"
+        help="Upload TractIQ reports or rental comp exports - data is automatically extracted and cached"
     )
     if tractiq_files:
         if len(tractiq_files) > 6:
@@ -429,8 +429,11 @@ elif page == "📊 Market Intel":
                 elif file_ext == 'csv':
                     from src.csv_processor import extract_csv_data
                     ext_result = extract_csv_data(file)
+                elif file_ext in ['xlsx', 'xls']:
+                    from src.csv_processor import extract_csv_data
+                    ext_result = extract_csv_data(file)
                 else:
-                    st.warning(f"Unsupported file type: {file.name}")
+                    st.warning(f"Unsupported file type: {file.name}. Supported: PDF, CSV, Excel (xlsx/xls)")
                     continue
             st.session_state.pdf_ext_data[file.name] = ext_result
             # Count totals
