@@ -5,63 +5,93 @@ import sys
 from datetime import datetime
 import re
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
+# Add src to path for local imports
+current_dir = os.path.dirname(os.path.abspath(__file__))
+src_dir = os.path.join(current_dir, 'src')
+if src_dir not in sys.path:
+    sys.path.insert(0, src_dir)
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
 
-# Core imports - wrap in try/except for cloud environment
+# Fallback Config class
+class Config:
+    SHEET_ID = None
+    DRIVE_FOLDER_ID = None
+    DRY_RUN = True
+    CONTACTS_TAB = "Contacts"
+    PROPERTIES_TAB = "Properties"
+
+# Try to import real config
 try:
-    from config import Config
-except:
-    # Fallback config for cloud
-    class Config:
-        SHEET_ID = None
-        DRIVE_FOLDER_ID = None
+    from config import Config as RealConfig
+    Config = RealConfig
+except Exception as e:
+    print(f"Using fallback Config: {e}")
 
+# Import critical modules with fallbacks
+FeasibilityScorer = None
 try:
-    from src.scoring_logic import FeasibilityScorer
-except:
-    FeasibilityScorer = None
+    from scoring_logic import FeasibilityScorer
+except Exception as e:
+    print(f"FeasibilityScorer unavailable: {e}")
 
+generate_pro_forma = recommend_unit_mix = None
 try:
-    from src.financials import generate_pro_forma, recommend_unit_mix
-except:
-    generate_pro_forma = recommend_unit_mix = None
+    from financials import generate_pro_forma, recommend_unit_mix
+except Exception as e:
+    print(f"Financials unavailable: {e}")
 
+render_7year_projection = render_feasibility_score = None
 try:
-    from src.projection_display import render_7year_projection, render_feasibility_score
-except:
-    render_7year_projection = render_feasibility_score = None
+    from projection_display import render_7year_projection, render_feasibility_score
+except Exception as e:
+    print(f"Projection display unavailable: {e}")
 
-# Optional imports - gracefully handle failures in cloud environment
+SecretaryAgent = None
 try:
     from main import SecretaryAgent
-except:
-    SecretaryAgent = None
+except Exception as e:
+    print(f"SecretaryAgent unavailable: {e}")
 
+get_actionable_leads = get_profile_candidates = get_skip_trace_list = run_adjustor_sync = None
 try:
-    from src.crm_adjustor import get_actionable_leads, get_profile_candidates, get_skip_trace_list, run_adjustor_sync
-except:
-    get_actionable_leads = get_profile_candidates = get_skip_trace_list = run_adjustor_sync = None
+    from crm_adjustor import get_actionable_leads, get_profile_candidates, get_skip_trace_list, run_adjustor_sync
+except Exception as e:
+    print(f"CRM features unavailable: {e}")
 
+IntelligenceAgent = geocode_address = generate_pydeck_map = None
 try:
-    from src.intelligence import IntelligenceAgent, geocode_address, generate_pydeck_map
-except:
-    IntelligenceAgent = geocode_address = generate_pydeck_map = None
+    from intelligence import IntelligenceAgent, geocode_address, generate_pydeck_map
+except Exception as e:
+    print(f"Intelligence features unavailable: {e}")
 
+get_competitors_realtime = None
 try:
-    from src.scraper import get_competitors_realtime
-except:
-    get_competitors_realtime = None
+    from scraper import get_competitors_realtime
+except Exception as e:
+    print(f"Scraper unavailable: {e}")
 
+extract_pdf_data = None
 try:
-    from src.pdf_processor import extract_pdf_data
-except:
-    extract_pdf_data = None
+    from pdf_processor import extract_pdf_data
+except Exception as e:
+    print(f"PDF processor unavailable: {e}")
 
+LeaseUpModel = EnhancedLeaseUpModel = None
 try:
-    from src.leaseup_model import LeaseUpModel
-    from src.leaseup_model_v2 import EnhancedLeaseUpModel
-except:
-    LeaseUpModel = EnhancedLeaseUpModel = None
+    from leaseup_model import LeaseUpModel
+    from leaseup_model_v2 import EnhancedLeaseUpModel
+except Exception as e:
+    print(f"Lease-up models unavailable: {e}")
+
+# CRITICAL: CSV processor for Excel file uploads
+extract_csv_data = None
+try:
+    from csv_processor import extract_csv_data
+except Exception as e:
+    print(f"CSV processor unavailable: {e}")
+    # This is critical - show error to user
+    st.error(f"Excel/CSV processing unavailable: {e}")
 # === TRACTIQ DATA INTEGRATION ===
 def load_tractiq_data():
     """
@@ -481,14 +511,23 @@ elif page == "📊 Market Intel":
             with st.spinner(f"Analyzing {file.name}..."):
                 file.seek(0) # Reset file pointer
                 if file_ext == 'pdf':
-                    from src.pdf_processor import extract_pdf_data
-                    ext_result = extract_pdf_data(file)
+                    if extract_pdf_data:
+                        ext_result = extract_pdf_data(file)
+                    else:
+                        st.error("PDF processing not available")
+                        continue
                 elif file_ext == 'csv':
-                    from src.csv_processor import extract_csv_data
-                    ext_result = extract_csv_data(file)
+                    if extract_csv_data:
+                        ext_result = extract_csv_data(file)
+                    else:
+                        st.error("CSV processing not available")
+                        continue
                 elif file_ext in ['xlsx', 'xls']:
-                    from src.csv_processor import extract_csv_data
-                    ext_result = extract_csv_data(file)
+                    if extract_csv_data:
+                        ext_result = extract_csv_data(file)
+                    else:
+                        st.error("Excel processing not available")
+                        continue
                 else:
                     st.warning(f"Unsupported file type: {file.name}. Supported: PDF, CSV, Excel (xlsx/xls)")
                     continue
