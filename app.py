@@ -67,7 +67,16 @@ except Exception as e:
 
 get_competitors_realtime = None
 try:
-    from scraper import get_competitors_realtime
+    # Try cloud-compatible scraper first
+    import os
+    is_cloud = os.getenv('STREAMLIT_RUNTIME_ENV') == 'cloud' or os.getenv('HOSTNAME', '').startswith('streamlit')
+
+    if is_cloud:
+        from scraper_cloud import get_competitors_realtime_cloud as get_competitors_realtime
+        print("Using cloud-compatible scraper (Selenium)")
+    else:
+        from scraper import get_competitors_realtime
+        print("Using local scraper (Playwright)")
 except Exception as e:
     print(f"Scraper unavailable: {e}")
 
