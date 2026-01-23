@@ -6,14 +6,12 @@ from datetime import datetime
 import re
 
 # VERSION MARKER - Force Streamlit Cloud to update
-APP_VERSION = "2.3.2-NAME-EXTRACTION"
-print(f"🚀 Starting Feasibility Engine {APP_VERSION}")
+APP_VERSION = "2.4.0-PRODUCTION"
 
 # CRITICAL: Use st.write() early to verify code is deployed
 import streamlit as st
 st.set_page_config(page_title="Storage Feasibility Engine", layout="wide")
-st.sidebar.markdown(f"**App Version:** `{APP_VERSION}`")
-st.sidebar.markdown("🔧 **Debug Mode Active**")
+# Debug mode disabled for production
 
 # Add src to path for local imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -81,19 +79,13 @@ try:
     import os
     import socket
 
-    # Debug environment detection
+    # Environment detection (silent)
     env_runtime = os.getenv('STREAMLIT_RUNTIME_ENV')
     hostname = os.getenv('HOSTNAME', 'NOT_SET')
     socket_hostname = socket.gethostname()
     users_exists = os.path.exists('/Users')
 
-    print(f"🔍 ENVIRONMENT DEBUG:")
-    print(f"   STREAMLIT_RUNTIME_ENV: {env_runtime}")
-    print(f"   HOSTNAME: {hostname}")
-    print(f"   socket.gethostname(): {socket_hostname}")
-    print(f"   /Users exists: {users_exists}")
-
-    # Multiple detection methods
+    # Detect cloud environment
     is_cloud = (
         env_runtime == 'cloud' or
         'streamlit' in hostname.lower() or
@@ -101,27 +93,13 @@ try:
         not users_exists  # Mac/local usually has /Users
     )
 
-    print(f"   ⚡ Cloud detected: {is_cloud}")
-
-    # VISIBLE UI DEBUG
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("**🔍 Environment Detection:**")
-    st.sidebar.markdown(f"- Cloud Mode: `{is_cloud}`")
-    st.sidebar.markdown(f"- Runtime: `{env_runtime or 'local'}`")
-    st.sidebar.markdown(f"- Hostname: `{socket_hostname[:20]}`")
-
+    # Load appropriate scraper based on environment (silent)
     if is_cloud:
-        print("🌩️ FORCING SELENIUM SCRAPER FOR CLOUD")
-        st.sidebar.success("✅ Using Selenium (Cloud)")
         from src.scraper_cloud import get_competitors_realtime_cloud as get_competitors_realtime
-        print(f"   ✅ Selenium scraper loaded: {get_competitors_realtime}")
     else:
-        print("💻 Local environment - using Playwright scraper")
-        st.sidebar.info("💻 Using Playwright (Local)")
         from src.scraper import get_competitors_realtime
 except Exception as e:
     print(f"⚠️ Scraper import failed: {e}")
-    st.sidebar.error(f"❌ Scraper failed: {str(e)[:50]}")
     import traceback
     traceback.print_exc()
 
@@ -548,31 +526,19 @@ elif page == "📊 Market Intel":
                 st.info(f"📍 Coordinates: Lat {coords_lat:.6f}, Lon {coords_lon:.6f}")
                 # PRE-FETCH: Scout full 20 miles immediately
                 if get_competitors_realtime:
-                    with st.spinner("🚀 Pre-fetching 20-mile trade area data..."):
+                    with st.spinner("🔍 Searching for competitors in 20-mile radius..."):
                         try:
-                            st.info(f"🎯 Calling scraper with: lat={coords_lat:.6f}, lon={coords_lon:.6f}, radius=20mi")
-                            print(f"🎯 SCRAPER CALL: lat={coords_lat}, lon={coords_lon}, radius=20")
-
                             scout_results = get_competitors_realtime(coords_lat, coords_lon, radius_miles=20)
 
-                            print(f"🎯 SCRAPER RETURNED: {len(scout_results) if scout_results else 0} results")
-                            st.info(f"📊 Raw scraper returned: {len(scout_results) if scout_results else 0} results")
-
                             if not scout_results or len(scout_results) == 0:
-                                st.warning(f"⚠️ Scraper returned 0 competitors. Check Streamlit Cloud logs for errors.")
-                                st.warning(f"Debug: scraper function is {get_competitors_realtime}")
+                                st.warning(f"⚠️ No competitors found within 20 miles.")
                             else:
                                 # Enrich with TractiQ
                                 enriched_results = merge_competitor_data(scout_results)
                                 st.session_state.all_competitors = enriched_results
                                 st.success(f"✅ Found {len(enriched_results)} competitors within 20 miles!")
                         except Exception as e:
-                            import traceback
-                            error_details = traceback.format_exc()
-                            st.error(f"❌ Scraper failed: {str(e)}")
-                            with st.expander("🔍 Full Error Details"):
-                                st.code(error_details)
-                            print(f"❌ SCRAPER EXCEPTION: {error_details}")
+                            st.error(f"❌ Failed to fetch competitor data: {str(e)}")
                 else:
                     st.warning("Real-time competitor scraping unavailable. Upload TractIQ Excel files to add competitor data.")
     # === REAL-TIME COMPETITOR SCRAPING ===
