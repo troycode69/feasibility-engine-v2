@@ -224,108 +224,46 @@ st.set_page_config(page_title="StorSageHQ", page_icon="assets/logo.png", layout=
 # === STORSAGE HQ BRANDING (THEME LOCKED) ===
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
-    
-    /* GLOBAL THEME LOCK - Force Light Mode Colors */
-    :root {
-        --primary-color: #0C2340;
-        --background-color: #F4F6F8;
-        --secondary-background-color: #FFFFFF;
-        --text-color: #0C2340;
-        --font: 'Roboto', sans-serif;
+    /* 1. Main Page Background - FORCE WHITE */
+    .stApp {
+        background-color: #FFFFFF !important;
     }
 
-    /* Global Typography */
-    html, body, [class*="css"] {
-        font-family: 'Roboto', sans-serif !important;
-        background-color: #F4F6F8 !important;
+    /* 2. Main Page Text - FORCE NAVY */
+    /* Target all headers, paragraphs, lists, and markdown */
+    .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6,
+    .stApp p, .stApp li, .stApp div, .stApp span {
         color: #0C2340 !important;
     }
 
-    /* MAIN AREA - High Contrast Light Gray */
-    .stApp {
-        background-color: #F4F6F8 !important;
-    }
-    
-    /* SIDEBAR - Theme Locked Navy */
+    /* 3. Sidebar Background - FORCE NAVY */
     [data-testid="stSidebar"] {
         background-color: #0C2340 !important;
-        border-right: 1px solid #1A3A5C;
     }
-    [data-testid="stSidebar"] * {
-        color: #FFFFFF !important;
-    }
-    /* Fix Sidebar Inputs to be readable */
-    [data-testid="stSidebar"] input, [data-testid="stSidebar"] select, [data-testid="stSidebar"] div[role="radiogroup"] {
-        background-color: rgba(255,255,255,0.1) !important;
+
+    /* 4. Sidebar Text - FORCE WHITE */
+    /* We must target specific elements inside the sidebar to override the global Navy rule above */
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3,
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] li, [data-testid="stSidebar"] div,
+    [data-testid="stSidebar"] span, [data-testid="stSidebar"] label {
         color: #FFFFFF !important;
     }
 
-    /* WIDGETS & INPUTS - Crisp White on Light Gray */
-    .stTextInput input, .stNumberInput input, .stSelectbox select, .stTextArea textarea {
-        background-color: #FFFFFF !important;
-        color: #333333 !important;
-        border: 1px solid #E0E0E0 !important;
-        border-radius: 4px !important;
-    }
-    
-    /* HEADERS - Navy Blue */
-    h1, h2, h3, h4, h5, h6 { 
-        color: #0C2340 !important; 
-        font-family: 'Roboto', sans-serif !important;
-        font-weight: 700 !important; 
-    }
-    
-    /* BUTTONS - Soft Blue Accent */
-    .stButton>button[kind="primary"] { 
-        background-color: #4A90E2 !important; 
-        color: white !important; 
-        border: none !important;
-        border-radius: 4px !important;
-        font-weight: 600 !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.5px !important;
-    }
-    .stButton>button[kind="secondary"] { 
-        background-color: white !important; 
-        border: 1px solid #0C2340 !important; 
-        color: #0C2340 !important; 
-        border-radius: 4px !important;
-    }
-
-    /* METRICS - Card Style */
-    div[data-testid="metric-container"] {
-        background-color: #FFFFFF !important;
-        border: 1px solid #E6E8EB !important;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
-        border-radius: 8px !important;
-        padding: 15px !important;
-    }
+    /* 5. Metrics & Cards */
+    /* Force metric labels to be readable */
     [data-testid="stMetricLabel"] {
-        color: #666666 !important;
-        font-size: 0.9rem !important;
-        font-weight: 500 !important;
+        color: #0C2340 !important;
     }
     [data-testid="stMetricValue"] {
-        color: #0C2340 !important;
-        font-family: 'Roboto', sans-serif !important;
-        font-weight: 700 !important;
+        color: #4A90E2 !important; /* Soft Blue for the number */
     }
 
-    /* EXPANDERS & CONTAINERS */
-    .streamlit-expanderHeader {
-        background-color: #FFFFFF !important;
-        color: #0C2340 !important;
-        font-weight: 600 !important;
-        border-radius: 4px !important;
+    /* 6. Buttons */
+    .stButton > button {
+        background-color: #0C2340 !important;
+        color: #FFFFFF !important;
+        border: none !important;
     }
-    
-    /* REMOVE PADDING to maximize space */
-    .block-container {
-        padding-top: 2rem !important;
-        padding-bottom: 2rem !important;
-    }
-
 </style>
 """, unsafe_allow_html=True)
 # st.image("assets/logo.png", width=120)  # Removed from main area
