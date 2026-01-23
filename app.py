@@ -550,8 +550,8 @@ if page == "📝 Project Inputs":
                 st.session_state.property_data = {
                     "name": project_name if project_name else project_address,
                     "address": project_address,
-                    "lat": analytics_results.site_location.latitude if hasattr(analytics_results, 'site_location') else None,
-                    "lon": analytics_results.site_location.longitude if hasattr(analytics_results, 'site_location') else None
+                    "lat": analytics_results.latitude if hasattr(analytics_results, 'latitude') else None,
+                    "lon": analytics_results.longitude if hasattr(analytics_results, 'longitude') else None
                 }
 
                 st.success("✅ Analysis complete! Navigate to Market Intel to view results.")
@@ -570,10 +570,28 @@ if page == "📝 Project Inputs":
         results = st.session_state.analysis_results
         if results:
             col1, col2, col3, col4 = st.columns(4)
-            col1.metric("Site Score", f"{results.site_scorecard.total_score}/100" if hasattr(results, 'site_scorecard') else "N/A")
-            col2.metric("Market Balance", results.market_supply_demand.balance_tier_3mi if hasattr(results, 'market_supply_demand') else "N/A")
-            col3.metric("Cap Rate", f"{results.pro_forma.stabilized_cap_rate:.2f}%" if hasattr(results, 'pro_forma') else "N/A")
-            col4.metric("IRR (10yr)", f"{results.pro_forma.irr_10yr:.1f}%" if hasattr(results, 'pro_forma') else "N/A")
+
+            # Safely extract metrics
+            site_score = "N/A"
+            if hasattr(results, 'site_scorecard') and results.site_scorecard:
+                site_score = f"{results.site_scorecard.total_score}/100"
+
+            market_balance = "N/A"
+            if hasattr(results, 'market_supply_demand') and results.market_supply_demand:
+                market_balance = results.market_supply_demand.balance_tier_3mi
+
+            cap_rate = "N/A"
+            if hasattr(results, 'pro_forma') and results.pro_forma and hasattr(results.pro_forma, 'metrics'):
+                cap_rate = f"{results.pro_forma.metrics.cap_rate*100:.2f}%"
+
+            irr = "N/A"
+            if hasattr(results, 'pro_forma') and results.pro_forma and hasattr(results.pro_forma, 'metrics'):
+                irr = f"{results.pro_forma.metrics.irr_10yr:.1f}%"
+
+            col1.metric("Site Score", site_score)
+            col2.metric("Market Balance", market_balance)
+            col3.metric("Cap Rate", cap_rate)
+            col4.metric("IRR (10yr)", irr)
             st.success("✅ Data ready - navigate to other pages to view detailed analysis")
 
 # === PAGE 2: COMMAND CENTER ===
@@ -706,9 +724,9 @@ elif page == "📊 Market Intel":
         st.markdown(f"**Project Name:** {st.session_state.property_data.get('name', 'N/A')}")
         st.markdown(f"**Address:** {st.session_state.property_data.get('address', 'N/A')}")
     with col2:
-        if hasattr(results, 'site_location'):
-            st.markdown(f"**Latitude:** {results.site_location.latitude:.6f}")
-            st.markdown(f"**Longitude:** {results.site_location.longitude:.6f}")
+        if hasattr(results, 'latitude') and hasattr(results, 'longitude'):
+            st.markdown(f"**Latitude:** {results.latitude:.6f}")
+            st.markdown(f"**Longitude:** {results.longitude:.6f}")
 
     st.markdown("---")
 
