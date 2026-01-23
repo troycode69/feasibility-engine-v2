@@ -2,8 +2,28 @@ import time
 import re
 import urllib.parse
 import pandas as pd
+import os
+import subprocess
 from playwright.sync_api import sync_playwright
 from geopy.distance import geodesic
+
+# Auto-install playwright browsers on first run in cloud
+def ensure_playwright_installed():
+    """Ensure playwright browsers are installed."""
+    try:
+        # Check if we're in cloud and browsers aren't installed
+        if os.getenv('STREAMLIT_RUNTIME_ENV') == 'cloud' or os.getenv('HOSTNAME', '').startswith('streamlit'):
+            browser_check = subprocess.run(['playwright', 'install', '--dry-run', 'chromium'],
+                                          capture_output=True, text=True)
+            if 'not installed' in browser_check.stdout.lower() or browser_check.returncode != 0:
+                print("Installing Playwright browsers...")
+                subprocess.run(['playwright', 'install', 'chromium'], check=True)
+                print("Playwright browsers installed successfully!")
+    except Exception as e:
+        print(f"Playwright install check failed: {e}")
+
+# Run installation check on import
+ensure_playwright_installed()
 
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
