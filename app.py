@@ -245,60 +245,87 @@ st.set_page_config(page_title="StorSageHQ", page_icon="assets/logo.png", layout=
 # === STORSAGE HQ BRANDING (THEME LOCKED) ===
 st.markdown("""
 <style>
-    /* --- 1. GLOBAL RESET: Force Light Theme Defaults --- */
+    /* --- 1. GLOBAL RESET --- */
     .stApp {
         background-color: #F4F6F8 !important; /* Light Gray Background */
     }
     
-    /* Force ALL generic text to be Navy by default */
+    /* Global Text Defaults - Navy */
     .stApp p, .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6, .stApp li, .stApp span, .stApp label {
         color: #0C2340 !important;
     }
 
-    /* --- 2. SIDEBAR: Force Navy Background & White Text --- */
+    /* --- 2. SIDEBAR - SEAMLESS LOGO BLEND --- */
     [data-testid="stSidebar"] {
-        background-color: #0C2340 !important; /* StorSageHQ Navy */
+        background-color: #0C2340 !important; /* Exact Brand Navy */
     }
-    /* Force all text inside sidebar to be White */
+    /* All sidebar text must be White */
     [data-testid="stSidebar"] * {
         color: #FFFFFF !important;
     }
 
-    /* --- 3. COMPONENT FIXES (The Invisible Text Fix) --- */
+    /* --- 3. METRIC CARDS - HIGH CONTRAST --- */
+    div[data-testid="metric-container"] {
+        background-color: #FFFFFF !important; /* White Card */
+        border: 1px solid #0C2340 !important; /* Navy Border */
+        border-radius: 8px !important;
+        padding: 16px !important;
+        box-shadow: 0 2px 4px rgba(12, 35, 64, 0.1) !important;
+    }
+    /* Label styling */
+    [data-testid="stMetricLabel"] {
+        color: #0C2340 !important; /* Navy Label */
+        background-color: transparent !important; /* Remove gray box if any */
+        font-weight: 600 !important;
+    }
+    /* Value styling */
+    [data-testid="stMetricValue"] {
+        color: #4A90E2 !important; /* Brand Blue */
+        font-weight: 700 !important;
+    }
+
+    /* --- 4. INPUTS & BUTTONS (VISIBILITY FIX) --- */
     
-    /* FILE UPLOADER: Make the drag-and-drop text White if the box is dark */
+    /* FILE UPLOADER - Navy Box, White Text */
     [data-testid="stFileUploader"] {
-        background-color: #0C2340 !important; /* Match brand navy */
-        border: 1px solid #FFFFFF !important;
+        background-color: #0C2340 !important;
+        border: 1px dashed #FFFFFF !important;
         border-radius: 8px !important;
     }
     [data-testid="stFileUploader"] section {
         background-color: #0C2340 !important;
     }
-    /* The text "Drag and drop file here" */
+    /* Force "Drag and drop" text to White */
     [data-testid="stFileUploader"] div, [data-testid="stFileUploader"] span, [data-testid="stFileUploader"] small {
-        color: #FFFFFF !important; /* Force White Text */
+        color: #FFFFFF !important;
     }
-    /* The "Browse files" button */
+    /* "Browse files" button */
     [data-testid="stFileUploader"] button {
-        color: #0C2340 !important; /* Navy text */
-        background-color: #FFFFFF !important; /* White button */
+        background-color: #FFFFFF !important;
+        color: #0C2340 !important;
         border: none !important;
     }
 
-    /* BUTTONS (like the Rocket): Force White Text */
+    /* PRIMARY BUTTONS (Rocket/Action) */
     .stButton > button {
-        background-color: #0C2340 !important;
-        color: #FFFFFF !important; /* Force text to be White */
+        background-color: #0C2340 !important; /* Navy Background */
+        color: #FFFFFF !important; /* White Text */
         border: 1px solid #FFFFFF !important;
+        border-radius: 6px !important;
+        font-weight: 600 !important;
     }
-    
-    /* HOVER STATE: Make it obvious */
     .stButton > button:hover {
-        background-color: #4A90E2 !important; /* Soft Blue on hover */
+        background-color: #4A90E2 !important; /* Blue Hover */
         color: #FFFFFF !important;
+        border-color: #4A90E2 !important;
     }
 
+    /* EXPANDERS - Clean White & Navy */
+    .streamlit-expanderHeader {
+        background-color: #FFFFFF !important;
+        color: #0C2340 !important;
+        border: 1px solid #E0E0E0 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 # st.image("assets/logo.png", width=120)  # Removed from main area
