@@ -5,6 +5,10 @@ import sys
 from datetime import datetime
 import re
 
+# VERSION MARKER - Force Streamlit Cloud to update
+APP_VERSION = "2.1.0-SELENIUM-SCRAPER"
+print(f"🚀 Starting Feasibility Engine {APP_VERSION}")
+
 # Add src to path for local imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
 src_dir = os.path.join(current_dir, 'src')
@@ -71,6 +75,13 @@ try:
     import os
     import socket
 
+    # Debug environment detection
+    print(f"🔍 ENVIRONMENT DEBUG:")
+    print(f"   STREAMLIT_RUNTIME_ENV: {os.getenv('STREAMLIT_RUNTIME_ENV')}")
+    print(f"   HOSTNAME: {os.getenv('HOSTNAME', 'NOT_SET')}")
+    print(f"   socket.gethostname(): {socket.gethostname()}")
+    print(f"   /Users exists: {os.path.exists('/Users')}")
+
     # Multiple detection methods
     is_cloud = (
         os.getenv('STREAMLIT_RUNTIME_ENV') == 'cloud' or
@@ -79,11 +90,14 @@ try:
         not os.path.exists('/Users')  # Mac/local usually has /Users
     )
 
+    print(f"   ⚡ Cloud detected: {is_cloud}")
+
     if is_cloud:
-        print("🌩️ Cloud environment detected - using Selenium scraper")
+        print("🌩️ FORCING SELENIUM SCRAPER FOR CLOUD")
         from scraper_cloud import get_competitors_realtime_cloud as get_competitors_realtime
+        print(f"   ✅ Selenium scraper loaded: {get_competitors_realtime}")
     else:
-        print("💻 Local environment detected - using Playwright scraper")
+        print("💻 Local environment - using Playwright scraper")
         from scraper import get_competitors_realtime
 except Exception as e:
     print(f"⚠️ Scraper import failed: {e}")
