@@ -6,7 +6,7 @@ from datetime import datetime
 import re
 
 # VERSION MARKER - Force Streamlit Cloud to update
-APP_VERSION = "2.2.0-DEBUG-VISIBLE"
+APP_VERSION = "2.3.0-SCRAPER-FIX"
 print(f"🚀 Starting Feasibility Engine {APP_VERSION}")
 
 # CRITICAL: Use st.write() early to verify code is deployed
