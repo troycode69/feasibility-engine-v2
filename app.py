@@ -67,18 +67,28 @@ except Exception as e:
 
 get_competitors_realtime = None
 try:
-    # Try cloud-compatible scraper first
+    # Detect if we're in Streamlit Cloud
     import os
-    is_cloud = os.getenv('STREAMLIT_RUNTIME_ENV') == 'cloud' or os.getenv('HOSTNAME', '').startswith('streamlit')
+    import socket
+
+    # Multiple detection methods
+    is_cloud = (
+        os.getenv('STREAMLIT_RUNTIME_ENV') == 'cloud' or
+        'streamlit' in os.getenv('HOSTNAME', '').lower() or
+        'streamlit' in socket.gethostname().lower() or
+        not os.path.exists('/Users')  # Mac/local usually has /Users
+    )
 
     if is_cloud:
+        print("🌩️ Cloud environment detected - using Selenium scraper")
         from scraper_cloud import get_competitors_realtime_cloud as get_competitors_realtime
-        print("Using cloud-compatible scraper (Selenium)")
     else:
+        print("💻 Local environment detected - using Playwright scraper")
         from scraper import get_competitors_realtime
-        print("Using local scraper (Playwright)")
 except Exception as e:
-    print(f"Scraper unavailable: {e}")
+    print(f"⚠️ Scraper import failed: {e}")
+    import traceback
+    traceback.print_exc()
 
 extract_pdf_data = None
 try:
