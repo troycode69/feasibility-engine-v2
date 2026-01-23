@@ -75,7 +75,12 @@ def extract_csv_data(file) -> Dict:
             data["market_metrics"] = metrics
 
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
         print(f"CSV Analysis Error: {e}")
+        print(error_details)
+        data["error"] = str(e)
+        data["error_details"] = error_details
 
     return data
 

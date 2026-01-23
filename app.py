@@ -475,6 +475,14 @@ elif page == "📊 Market Intel":
                     st.warning(f"Unsupported file type: {file.name}. Supported: PDF, CSV, Excel (xlsx/xls)")
                     continue
             st.session_state.pdf_ext_data[file.name] = ext_result
+
+            # Show errors if any
+            if ext_result.get('error'):
+                st.error(f"Error processing {file.name}: {ext_result['error']}")
+                if ext_result.get('error_details'):
+                    with st.expander("Error Details"):
+                        st.code(ext_result['error_details'])
+
             # Count totals
             total_competitors += len(ext_result.get('competitors', []))
             total_rates += len(ext_result.get('extracted_rates', []))
