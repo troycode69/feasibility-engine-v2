@@ -153,7 +153,7 @@ Now respond to user queries based on this data."""
 # === GEOCODING HELPER ===
 def geocode_address(address):
     """
-    Convert address string to lat/lon coordinates using geopy Nominatim.
+    Convert address string to lat/lon coordinates using multiple geocoding services.
 
     Args:
         address: Street address string
@@ -161,31 +161,52 @@ def geocode_address(address):
     Returns:
         tuple: (latitude, longitude, resolved_address) or (lat, lon, None) if failed
     """
+    import requests
+    import urllib.parse
+
+    print(f"🌍 Attempting to geocode: '{address}'")
+
+    # Try Method 1: Nominatim (OpenStreetMap) with requests directly
     try:
-        from geopy.geocoders import Nominatim
+        encoded_address = urllib.parse.quote(address)
+        url = f"https://nominatim.openstreetmap.org/search?q={encoded_address}&format=json&limit=1"
+        headers = {'User-Agent': 'StorageFeasibilityEngine/2.0'}
 
-        print(f"🌍 Attempting to geocode: '{address}'")
-
-        # Create geocoder with updated user agent
-        geolocator = Nominatim(user_agent="storage_feasibility_engine_v2", timeout=15)
-
-        # Try geocoding with the full address first
-        location = geolocator.geocode(address, exactly_one=True, addressdetails=True)
-
-        if location:
-            print(f"✅ Geocoded to: {location.address}")
-            print(f"   Coordinates: {location.latitude}, {location.longitude}")
-            return (location.latitude, location.longitude, location.address)
-        else:
-            print(f"⚠️ Geocoding returned no results for: {address}")
-            # Fallback to NYC if geocoding fails
-            return (40.7128, -74.0060, "Fallback: New York, NY (geocoding failed)")
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            if data and len(data) > 0:
+                result = data[0]
+                lat = float(result['lat'])
+                lon = float(result['lon'])
+                display_name = result.get('display_name', address)
+                print(f"✅ Geocoded via Nominatim: {display_name}")
+                print(f"   Coordinates: {lat}, {lon}")
+                return (lat, lon, display_name)
     except Exception as e:
-        print(f"❌ Geocoding error: {type(e).__name__}: {e}")
-        import traceback
-        traceback.print_exc()
-        # Fallback to NYC coordinates
-        return (40.7128, -74.0060, f"Fallback: New York, NY (error: {str(e)[:50]})")
+        print(f"⚠️ Nominatim failed: {e}")
+
+    # Try Method 2: Geocode.xyz (free, no API key needed)
+    try:
+        encoded_address = urllib.parse.quote(address)
+        url = f"https://geocode.xyz/{encoded_address}?json=1"
+
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            if 'latt' in data and 'longt' in data:
+                lat = float(data['latt'])
+                lon = float(data['longt'])
+                display_name = data.get('standard', {}).get('city', address)
+                print(f"✅ Geocoded via Geocode.xyz: {display_name}")
+                print(f"   Coordinates: {lat}, {lon}")
+                return (lat, lon, display_name)
+    except Exception as e:
+        print(f"⚠️ Geocode.xyz failed: {e}")
+
+    # Fallback to NYC if all methods fail
+    print(f"❌ All geocoding methods failed for: {address}")
+    return (40.7128, -74.0060, "Fallback: New York, NY (all geocoding services failed)")
 
 
 def generate_mock_competitors_at_radius(center_lat, center_lon):
