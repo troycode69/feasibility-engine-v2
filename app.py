@@ -464,11 +464,16 @@ elif page == "📊 Market Intel":
                         st.write(comp)
         # Auto-cache the extracted data (no manual button click needed)
         if st.session_state.pdf_ext_data:
-            from src.tractiq_cache import cache_tractiq_data
-            cache_tractiq_data(market_name, st.session_state.pdf_ext_data)
-            # Show success summary
-            st.success(f"✅ Extracted data from {len(tractiq_files)} files: {total_competitors} competitors, {total_rates} rates")
-            st.info(f"💾 Automatically cached for market: **{market_name}**")
+            try:
+                from src.tractiq_cache import cache_tractiq_data
+                cache_tractiq_data(market_name, st.session_state.pdf_ext_data)
+                # Show success summary
+                st.success(f"✅ Extracted data from {len(tractiq_files)} files: {total_competitors} competitors, {total_rates} rates")
+                st.info(f"💾 Automatically cached for market: **{market_name}**")
+            except Exception as e:
+                # Caching failed (might be read-only filesystem in cloud), but data is still in session
+                st.success(f"✅ Extracted data from {len(tractiq_files)} files: {total_competitors} competitors, {total_rates} rates")
+                st.warning(f"Note: Could not cache to disk (cloud environment), but data is available for this session")
     # === AI-POWERED AUTOMATION ===
     st.markdown("---")
     st.markdown("### 🤖 AI-Powered Analysis")
