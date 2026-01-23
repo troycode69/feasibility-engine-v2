@@ -245,46 +245,60 @@ st.set_page_config(page_title="StorSageHQ", page_icon="assets/logo.png", layout=
 # === STORSAGE HQ BRANDING (THEME LOCKED) ===
 st.markdown("""
 <style>
-    /* 1. Main Page Background - FORCE WHITE */
+    /* --- 1. GLOBAL RESET: Force Light Theme Defaults --- */
     .stApp {
-        background-color: #FFFFFF !important;
+        background-color: #F4F6F8 !important; /* Light Gray Background */
     }
-
-    /* 2. Main Page Text - FORCE NAVY */
-    /* Target all headers, paragraphs, lists, and markdown */
-    .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6,
-    .stApp p, .stApp li, .stApp div, .stApp span {
+    
+    /* Force ALL generic text to be Navy by default */
+    .stApp p, .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6, .stApp li, .stApp span, .stApp label {
         color: #0C2340 !important;
     }
 
-    /* 3. Sidebar Background - FORCE NAVY */
+    /* --- 2. SIDEBAR: Force Navy Background & White Text --- */
     [data-testid="stSidebar"] {
-        background-color: #0C2340 !important;
+        background-color: #0C2340 !important; /* StorSageHQ Navy */
     }
-
-    /* 4. Sidebar Text - FORCE WHITE */
-    /* We must target specific elements inside the sidebar to override the global Navy rule above */
-    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3,
-    [data-testid="stSidebar"] p, [data-testid="stSidebar"] li, [data-testid="stSidebar"] div,
-    [data-testid="stSidebar"] span, [data-testid="stSidebar"] label {
+    /* Force all text inside sidebar to be White */
+    [data-testid="stSidebar"] * {
         color: #FFFFFF !important;
     }
 
-    /* 5. Metrics & Cards */
-    /* Force metric labels to be readable */
-    [data-testid="stMetricLabel"] {
-        color: #0C2340 !important;
+    /* --- 3. COMPONENT FIXES (The Invisible Text Fix) --- */
+    
+    /* FILE UPLOADER: Make the drag-and-drop text White if the box is dark */
+    [data-testid="stFileUploader"] {
+        background-color: #0C2340 !important; /* Match brand navy */
+        border: 1px solid #FFFFFF !important;
+        border-radius: 8px !important;
     }
-    [data-testid="stMetricValue"] {
-        color: #4A90E2 !important; /* Soft Blue for the number */
-    }
-
-    /* 6. Buttons */
-    .stButton > button {
+    [data-testid="stFileUploader"] section {
         background-color: #0C2340 !important;
-        color: #FFFFFF !important;
+    }
+    /* The text "Drag and drop file here" */
+    [data-testid="stFileUploader"] div, [data-testid="stFileUploader"] span, [data-testid="stFileUploader"] small {
+        color: #FFFFFF !important; /* Force White Text */
+    }
+    /* The "Browse files" button */
+    [data-testid="stFileUploader"] button {
+        color: #0C2340 !important; /* Navy text */
+        background-color: #FFFFFF !important; /* White button */
         border: none !important;
     }
+
+    /* BUTTONS (like the Rocket): Force White Text */
+    .stButton > button {
+        background-color: #0C2340 !important;
+        color: #FFFFFF !important; /* Force text to be White */
+        border: 1px solid #FFFFFF !important;
+    }
+    
+    /* HOVER STATE: Make it obvious */
+    .stButton > button:hover {
+        background-color: #4A90E2 !important; /* Soft Blue on hover */
+        color: #FFFFFF !important;
+    }
+
 </style>
 """, unsafe_allow_html=True)
 # st.image("assets/logo.png", width=120)  # Removed from main area
