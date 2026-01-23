@@ -7,11 +7,29 @@ import re
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 
-# Core imports - always needed
-from config import Config
-from src.scoring_logic import FeasibilityScorer
-from src.financials import generate_pro_forma, recommend_unit_mix
-from src.projection_display import render_7year_projection, render_feasibility_score
+# Core imports - wrap in try/except for cloud environment
+try:
+    from config import Config
+except:
+    # Fallback config for cloud
+    class Config:
+        SHEET_ID = None
+        DRIVE_FOLDER_ID = None
+
+try:
+    from src.scoring_logic import FeasibilityScorer
+except:
+    FeasibilityScorer = None
+
+try:
+    from src.financials import generate_pro_forma, recommend_unit_mix
+except:
+    generate_pro_forma = recommend_unit_mix = None
+
+try:
+    from src.projection_display import render_7year_projection, render_feasibility_score
+except:
+    render_7year_projection = render_feasibility_score = None
 
 # Optional imports - gracefully handle failures in cloud environment
 try:
