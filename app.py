@@ -243,6 +243,32 @@ def merge_competitor_data(scraper_results):
 st.set_page_config(page_title="StorSageHQ", page_icon="assets/logo.png", layout="wide")
 
 # === STORSAGE HQ BRANDING (THEME LOCKED) ===
+
+# st.image("assets/logo.png", width=120)  # Removed from main area
+
+# Session state
+if "ai_assistant" not in st.session_state:
+    st.session_state.ai_assistant = IntelligenceAgent()
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+if "scorer" not in st.session_state:
+    st.session_state.scorer = FeasibilityScorer()
+if "property_data" not in st.session_state:
+    st.session_state.property_data = {"name": "", "address": "", "lat": None, "lon": None}
+if "financial_inputs" not in st.session_state:
+    # New Format: { "key": {"value": X, "source": "Y"} }
+    st.session_state.financial_inputs = {}
+if "scoring_sources" not in st.session_state:
+    st.session_state.scoring_sources = {}
+if "all_competitors" not in st.session_state:
+    st.session_state.all_competitors = []
+if "pdf_ext_data" not in st.session_state:
+    st.session_state.pdf_ext_data = {}
+if "feasibility_engine" not in st.session_state and FeasibilityEngine:
+    st.session_state.feasibility_engine = FeasibilityEngine()
+
+# Display the logo and title in a horizontal lockup
+# === STORSAGE HQ BRANDING (THEME LOCKED) ===
 st.markdown("""
 <style>
     /* --- 1. GLOBAL RESET --- */
@@ -255,7 +281,7 @@ st.markdown("""
         color: #0C2340 !important;
     }
 
-    /* --- 2. SIDEBAR - SEAMLESS LOGO BLEND --- */
+    /* --- 2. SIDEBAR - SEAMLESS BLEND --- */
     [data-testid="stSidebar"] {
         background-color: #0C2340 !important; /* Exact Brand Navy */
     }
@@ -264,7 +290,30 @@ st.markdown("""
         color: #FFFFFF !important;
     }
 
-    /* --- 3. METRIC CARDS - HIGH CONTRAST --- */
+    /* --- 3. TOP NAVIGATION HEADER --- */
+    /* Container for the Top Nav (Radio Group) */
+    div[role="radiogroup"] {
+        background-color: #0C2340 !important;
+        padding: 10px 20px !important;
+        border-radius: 8px !important;
+        margin-bottom: 20px !important;
+        border: 1px solid #1A3A5C !important;
+    }
+    /* Nav Items Text (Top Nav Labels) */
+    div[role="radiogroup"] p {
+        color: #FFFFFF !important; /* Force White Text */
+        font-weight: 600 !important;
+        background-color: transparent !important;
+    }
+    div[role="radiogroup"] div {
+        color: #FFFFFF !important;
+    }
+    /* Active Tab Highlight */
+    div[role="radiogroup"] [data-checked="true"] + div {
+        color: #4A90E2 !important; /* Blue text for active tab */
+    }
+
+    /* --- 4. METRIC CARDS --- */
     div[data-testid="metric-container"] {
         background-color: #FFFFFF !important; /* White Card */
         border: 1px solid #0C2340 !important; /* Navy Border */
@@ -275,8 +324,6 @@ st.markdown("""
     /* Label styling */
     [data-testid="stMetricLabel"] {
         color: #0C2340 !important; /* Navy Label */
-        background-color: transparent !important; /* Remove gray box if any */
-        font-weight: 600 !important;
     }
     /* Value styling */
     [data-testid="stMetricValue"] {
@@ -284,7 +331,7 @@ st.markdown("""
         font-weight: 700 !important;
     }
 
-    /* --- 4. INPUTS & BUTTONS (VISIBILITY FIX) --- */
+    /* --- 5. INPUTS & BUTTONS --- */
     
     /* FILE UPLOADER - Navy Box, White Text */
     [data-testid="stFileUploader"] {
@@ -319,6 +366,10 @@ st.markdown("""
         color: #FFFFFF !important;
         border-color: #4A90E2 !important;
     }
+    /* Ensure text inside button is white (redundant safety) */
+    .stButton > button p {
+        color: #FFFFFF !important;
+    }
 
     /* EXPANDERS - Clean White & Navy */
     .streamlit-expanderHeader {
@@ -328,53 +379,8 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
-# st.image("assets/logo.png", width=120)  # Removed from main area
-
-# Session state
-if "ai_assistant" not in st.session_state:
-    st.session_state.ai_assistant = IntelligenceAgent()
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-if "scorer" not in st.session_state:
-    st.session_state.scorer = FeasibilityScorer()
-if "property_data" not in st.session_state:
-    st.session_state.property_data = {"name": "", "address": "", "lat": None, "lon": None}
-if "financial_inputs" not in st.session_state:
-    # New Format: { "key": {"value": X, "source": "Y"} }
-    st.session_state.financial_inputs = {}
-if "scoring_sources" not in st.session_state:
-    st.session_state.scoring_sources = {}
-if "all_competitors" not in st.session_state:
-    st.session_state.all_competitors = []
-if "pdf_ext_data" not in st.session_state:
-    st.session_state.pdf_ext_data = {}
-if "feasibility_engine" not in st.session_state and FeasibilityEngine:
-    st.session_state.feasibility_engine = FeasibilityEngine()
 
 # Display the logo and title in a horizontal lockup
-# === TOP NAVIGATION BAR ===
-# Custom CSS for the Top Navigation Bar
-st.markdown("""
-<style>
-    /* Top Navigation Container */
-    div[role="radiogroup"] {
-        background-color: #0C2340 !important;
-        padding: 10px 20px !important;
-        border-radius: 8px !important;
-        margin-bottom: 20px !important;
-    }
-    /* Nav Items (Radio Buttons) */
-    div[role="radiogroup"] label {
-        color: #FFFFFF !important;
-        background-color: transparent !important;
-        font-weight: 600 !important;
-    }
-    /* Selected State Highlight */
-    div[role="radiogroup"] label[data-checked="true"] {
-        color: #4A90E2 !important; /* Blue highlight for active tab */
-    }
-</style>
-""", unsafe_allow_html=True)
 
 # Top Navigation Layout
 page = st.radio(
