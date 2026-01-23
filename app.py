@@ -564,7 +564,27 @@ elif page == "📊 Market Intel":
                         # Update Session State
                         processed_data = results.get("results", {})
                         st.session_state.pdf_ext_data.update(processed_data)
-                        
+
+                        # Convert Excel competitors to all_competitors format
+                        excel_competitors = []
+                        for file_data in st.session_state.pdf_ext_data.values():
+                            competitors = file_data.get('competitors', [])
+                            for comp in competitors:
+                                excel_competitors.append({
+                                    "Name": comp.get('name', 'Unknown'),
+                                    "Address": comp.get('address', ''),
+                                    "Distance": comp.get('distance_miles', 0),
+                                    "Rate": f"${comp['rate_10x10']}" if comp.get('rate_10x10') else "Call for Rate",
+                                    "Source": "TractIQ Upload",
+                                    "Units": comp.get('units', 0),
+                                    "NRSF": comp.get('nrsf', 0),
+                                    "Occupancy": comp.get('occupancy', 0)
+                                })
+                        # Add to all_competitors
+                        if excel_competitors:
+                            st.session_state.all_competitors = excel_competitors
+                            st.success(f"✅ Loaded {len(excel_competitors)} competitors from uploaded files")
+
                         # Show Summary
                         summary = results.get("summary", {})
                         st.success(f"✅ Extracted data from {summary['success_count']} files")
