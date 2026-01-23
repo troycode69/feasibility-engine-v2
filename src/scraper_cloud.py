@@ -68,16 +68,24 @@ def get_competitors_realtime_cloud(target_lat, target_lon, radius_miles=5):
     """
     Cloud-compatible competitor scraper using Selenium
     """
-    print(f"🕵️  CLOUD SCRAPER CALLED: Scraping REAL-TIME (Radius: {radius_miles}mi) from: {target_lat}, {target_lon}")
-    print(f"🔍 Current working directory: {os.getcwd()}")
-    print(f"🔍 Checking for chromium binaries...")
+    browser = None  # Initialize to avoid NameError in finally block
 
-    browser = get_cloud_browser()
-    if not browser:
-        print("⚠️ Browser failed to start in cloud environment")
+    try:
+        print(f"🕵️  CLOUD SCRAPER CALLED: Scraping REAL-TIME (Radius: {radius_miles}mi) from: {target_lat}, {target_lon}")
+        print(f"🔍 Current working directory: {os.getcwd()}")
+        print(f"🔍 Checking for chromium binaries...")
+
+        browser = get_cloud_browser()
+        if not browser:
+            print("⚠️ Browser failed to start in cloud environment")
+            return []
+
+        print(f"✅ Browser started successfully!")
+    except Exception as e:
+        print(f"❌ CRITICAL ERROR in scraper init: {e}")
+        import traceback
+        traceback.print_exc()
         return []
-
-    print(f"✅ Browser started successfully!")
 
     competitors = []
     queries = ["Storage Units", "Self Storage", "RV Storage"]
@@ -153,7 +161,12 @@ def get_competitors_realtime_cloud(target_lat, target_lon, radius_miles=5):
                 print(f"      ⚠️ Scraper error '{query}': {str(e)[:100]}")
                 continue
     finally:
-        browser.quit()
+        if browser:
+            try:
+                browser.quit()
+                print("✅ Browser closed successfully")
+            except Exception as e:
+                print(f"⚠️ Error closing browser: {e}")
 
     # Remove duplicates
     seen = set()
