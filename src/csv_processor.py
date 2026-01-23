@@ -90,13 +90,16 @@ def extract_competitors_from_csv(rows: List[Dict], headers: Dict) -> List[Dict]:
     competitors = []
 
     # Common TractIQ CSV column mappings (case-insensitive)
-    name_keys = ['facility name', 'name', 'property name', 'facility', 'property']
-    address_keys = ['address', 'street address', 'location']
-    units_keys = ['units', 'unit count', 'total units', '# units']
-    occupancy_keys = ['occupancy', 'physical occupancy', 'occ %', 'occupancy %', 'occupied %']
-    rate_keys = ['10x10 cc', '10x10 climate', '10x10 rate', 'street rate', 'current rate']
-    nrsf_keys = ['nrsf', 'rentable sf', 'total sf', 'square feet']
-    distance_keys = ['distance', 'distance (mi)', 'miles']
+    name_keys = ['facility name', 'name', 'property name', 'facility', 'property', 'facilityid']
+    address_keys = ['address', 'street address', 'location', 'street', 'addr']
+    units_keys = ['units', 'unit count', 'total units', '# units', 'number of units']
+    occupancy_keys = ['occupancy', 'physical occupancy', 'occ %', 'occupancy %', 'occupied %', 'aggregate']
+    rate_keys = ['10x10 cc', '10x10 climate', '10x10 rate', 'street rate', 'current rate', 'cc - 10x10', '10 x 10']
+    nrsf_keys = ['nrsf', 'rentable sf', 'total sf', 'square feet', 'square ft', 'sq ft']
+    distance_keys = ['distance', 'distance (mi)', 'miles', 'dist']
+
+    # Debug: Print available columns
+    print(f"CSV Columns found: {list(headers.keys())[:10]}")  # Print first 10 column names
 
     for row in rows:
         comp = {"source": "CSV"}
