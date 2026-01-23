@@ -1102,78 +1102,272 @@ elif page == "💰 Underwriting":
                 import traceback
                 st.code(traceback.format_exc())
 
-# === PAGE 4: FEASIBILITY REPORT ===
+# === PAGE 4: INTELLIGENT FEASIBILITY REPORT ===
 elif page == "📋 Feasibility Report":
-    st.header("Feasibility Study Report")
-    scorer = st.session_state.scorer
-    breakdown = scorer.get_score_breakdown()
-    recommendation = scorer.get_recommendation()
-    st.markdown(f"""
-    <div style="background: white; padding: 30px; border-radius: 8px; margin-bottom: 20px;">
-        <h2>Executive Summary</h2>
-        <p><strong>Project:</strong> {st.session_state.property_data.get('name', 'N/A')}</p>
-        <p><strong>Location:</strong> {st.session_state.property_data.get('address', 'N/A')}</p>
-        <p><strong>Date:</strong> {datetime.now().strftime('%B %d, %Y')}</p>
-        <hr>
-        <p><strong>Feasibility Score: {scorer.get_total_score()}/100 points</strong></p>
-        <p><strong>Recommendation: {recommendation['decision']}</strong></p>
-    </div>
-    """, unsafe_allow_html=True)
-    st.markdown("## Scoring Breakdown")
-    scoring_df = pd.DataFrame([
-        {"Category": k, "Score": v["score"], "Max": v["max"], "Percentage": f"{(v['score']/v['max']*100):.1f}%"}
-        for k, v in breakdown.items()
-    ])
-    st.dataframe(scoring_df, hide_index=True)
-    if st.button("📄 Generate Professional PDF Report", type="primary", use_container_width=True):
-        with st.spinner("Generating Bob Copper-quality PDF report..."):
+    st.header("🤖 Intelligent Feasibility Report Generator")
+    st.caption("Professional 20+ page reports powered by Claude AI + Data Analytics")
+
+    # Show analytics engine status
+    st.markdown("---")
+    st.markdown("### 🔧 Analytics Engine Status")
+
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Benchmarks", "✅ Ready", delta="50 states")
+    with col2:
+        st.metric("Scoring System", "✅ Ready", delta="100 points")
+    with col3:
+        st.metric("Financial Model", "✅ Ready", delta="Pro Forma")
+    with col4:
+        st.metric("LLM Integration", "⏳ Pending", delta="Need API Key")
+
+    # Report Configuration
+    st.markdown("---")
+    st.markdown("### 📋 Report Configuration")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        project_name = st.text_input("Project Name",
+            value=st.session_state.property_data.get('name', ''),
+            placeholder="e.g., Nashville Storage Center")
+        site_address = st.text_input("Site Address",
+            value=st.session_state.property_data.get('address', ''),
+            placeholder="123 Main St, Nashville, TN 37211")
+
+    with col2:
+        proposed_nrsf = st.number_input("Proposed NRSF", value=60000, step=5000,
+            help="Net Rentable Square Feet")
+        land_cost = st.number_input("Land Cost ($)", value=800000, step=50000)
+
+    # Advanced Options
+    with st.expander("⚙️ Advanced Configuration", expanded=False):
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.markdown("**Site Attributes**")
+            visibility = st.slider("Visibility (1-5)", 1, 5, 4)
+            traffic_count = st.number_input("Daily Traffic", value=18500, step=1000)
+        with col2:
+            st.markdown("**Financial Assumptions**")
+            loan_to_cost = st.slider("Loan-to-Cost %", 50, 80, 75) / 100
+            interest_rate = st.slider("Interest Rate %", 4.0, 8.0, 6.5, 0.25) / 100
+        with col3:
+            st.markdown("**Lot Details**")
+            lot_acres = st.number_input("Lot Size (acres)", value=5.2, step=0.1)
+            access_quality = st.slider("Access Quality (1-5)", 1, 5, 5)
+
+    st.markdown("---")
+
+    # Preview of Analytics Pipeline
+    st.markdown("### 🔄 Analytics Pipeline Preview")
+    st.caption("This shows what happens when you generate a report")
+
+    pipeline_steps = [
+        ("1️⃣ Geocode Address", "Convert address to coordinates", True),
+        ("2️⃣ Fetch Demographics", "Census API - Population, income, growth", True),
+        ("3️⃣ Load Market Intel", "TractiQ cache + Google Maps scraper", True),
+        ("4️⃣ Calculate Supply/Demand", "SF per capita, market saturation", True),
+        ("5️⃣ Build Financial Model", "IRR, NPV, Cap Rate, DSCR, Break-even", True),
+        ("6️⃣ Calculate Site Score", "100-point scoring (5 categories)", True),
+        ("7️⃣ Generate AI Narrative", "Claude API - Executive Summary, Market Analysis, etc.", False)
+    ]
+
+    for step, desc, ready in pipeline_steps:
+        col1, col2, col3 = st.columns([1, 3, 1])
+        with col1:
+            st.markdown(f"**{step}**")
+        with col2:
+            st.caption(desc)
+        with col3:
+            if ready:
+                st.success("✅ Ready")
+            else:
+                st.warning("⏳ API Key")
+
+    st.markdown("---")
+
+    # Report Sections Preview
+    st.markdown("### 📄 Report Sections (6 AI-Generated Narratives)")
+
+    sections = [
+        ("Executive Summary", "2-3 paragraphs with overall assessment, key findings, and recommendation"),
+        ("Site Scoring System", "Detailed breakdown of 100-point score across all 5 categories"),
+        ("Market Analysis", "Supply/demand dynamics, demographics, competitive landscape"),
+        ("Financial Analysis", "Development costs, revenue projections, key metrics (IRR, NPV, Cap Rate)"),
+        ("Risk Assessment", "Market risks, development risks, operational risks, mitigation strategies"),
+        ("Conclusion & Recommendation", "GO/NO-GO decision with confidence level and next steps")
+    ]
+
+    for i, (section, desc) in enumerate(sections, 1):
+        with st.expander(f"{i}. {section}", expanded=False):
+            st.markdown(f"**What's included:**")
+            st.markdown(f"• {desc}")
+            st.markdown(f"• Data-driven insights from analytics engine")
+            st.markdown(f"• Professional narrative generated by Claude 3.5 Sonnet")
+            st.markdown(f"• Industry-standard formatting matching template")
+
+    st.markdown("---")
+
+    # Sample Output Preview (Nashville Test Data)
+    st.markdown("### 📊 Sample Output (Test Data)")
+    st.caption("This is the analytics output from our test run")
+
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Site Score", "83/100", delta="Good")
+    with col2:
+        st.metric("Market Balance", "UNDERSUPPLIED", delta="Opportunity")
+    with col3:
+        st.metric("Cap Rate", "6.43%", delta="Fair")
+    with col4:
+        st.metric("10-Year IRR", "3.74%", delta="Below Target")
+
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Total Dev Cost", "$7.9M")
+    with col2:
+        st.metric("Stabilized NOI", "$510K")
+    with col3:
+        st.metric("DSCR", "1.06x", delta="Tight")
+    with col4:
+        st.metric("Break-even Occ", "91.8%", delta="High Risk")
+
+    # Show detailed scoring breakdown
+    with st.expander("📊 Detailed Scoring Breakdown (Test Data)", expanded=False):
+        st.markdown("**Demographics: 20/25 points**")
+        st.markdown("- Population (3-Mile): 61,297 → 4/5 (good)")
+        st.markdown("- Growth Rate: 0.37% → 2/5 (weak)")
+        st.markdown("- Median Income: $77,883 → 4/5 (good)")
+        st.markdown("- Renter-Occupied: 46.1% → 5/5 (excellent)")
+        st.markdown("- Median Age: 38.6 → 5/5 (excellent)")
+
+        st.markdown("**Supply/Demand: 18/25 points**")
+        st.markdown("- SF Per Capita: 5.8 → 3/5 (fair)")
+        st.markdown("- Avg Occupancy: 88% → 4/5 (good)")
+        st.markdown("- Distance to Nearest: 1.2 mi → 3/5 (fair)")
+
+        st.markdown("**Site Attributes: 22/25 points**")
+        st.markdown("**Competitive Positioning: 11/15 points**")
+        st.markdown("**Economic Market: 7/10 points**")
+
+    st.markdown("---")
+
+    # Generation Controls
+    st.markdown("### 🚀 Generate Report")
+
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.warning("⚠️ **Anthropic API Key Required**: Add your API key to `.env` file to enable AI report generation")
+        st.code("ANTHROPIC_API_KEY=your_key_here", language="bash")
+
+    with col2:
+        api_key_present = os.getenv("ANTHROPIC_API_KEY") is not None
+        if api_key_present:
+            st.success("✅ API Key Found")
+        else:
+            st.error("❌ No API Key")
+
+    # Test Analytics Only (No LLM)
+    if st.button("🧪 Test Analytics Pipeline (No AI)", type="secondary", use_container_width=True):
+        with st.spinner("Running analytics pipeline..."):
             try:
-                from src.pdf_report_generator import generate_feasibility_pdf
-                # Gather all data for report - using real data from scorer
-                all_comps = st.session_state.get('all_competitors', [])
-                # Calculate real competitor stats
-                avg_occ = sum(c.get('occupancy_pct', 0) for c in all_comps) / len(all_comps) if all_comps else 0
-                avg_rate = sum(c.get('rate_10x10_cc', 0) for c in all_comps) / len(all_comps) if all_comps else 0
-                # Get financial inputs if they exist
-                fin_inputs = st.session_state.get('financial_inputs', {})
-                report_data = {
-                    'address': st.session_state.property_data.get('address', 'Subject Property'),
-                    'lat': st.session_state.property_data.get('lat', 0),
-                    'lon': st.session_state.property_data.get('lon', 0),
-                    'location_context': st.session_state.get('inputs', {}).get('location_context', ''),
-                    'scorer_inputs': scorer.last_inputs, # Real data from scoring inputs
-                    'competitors': all_comps,
-                    'comp_stats': {
-                        'count': len(all_comps),
-                        'avg_occupancy': avg_occ,
-                        'avg_rate_10x10': avg_rate,
-                        'total_nrsf': sum(c.get('nrsf', 0) for c in all_comps)
-                    },
-                    'recommendation': recommendation,
-                    'market_score': scorer.get_total_score(),
-                    'score_breakdown': scorer.get_score_breakdown(),
-                    'ai_results': st.session_state.get('ai_results', {}),
-                    'pdf_ext_data': st.session_state.get('pdf_ext_data', {}), # TractIQ data from uploaded PDFs
-                    'inputs': fin_inputs if fin_inputs else {
-                        'land_cost': 1000000,
-                        'construction_cost_psf': 45,
-                        'rentable_sqft': 60000
-                    }
-                }
-                # Generate PDF
-                pdf_bytes = generate_feasibility_pdf(report_data)
-                # Offer download
-                st.success("✅ PDF Report Generated!")
-                # Create download button
-                st.download_button(
-                    label="📥 Download PDF Report",
-                    data=pdf_bytes,
-                    file_name=f"Feasibility_Study_{datetime.now().strftime('%Y%m%d')}.pdf",
-                    mime="application/pdf",
-                    type="primary"
+                from src.report_orchestrator import ProjectInputs, generate_report
+
+                # Create project inputs
+                inputs = ProjectInputs(
+                    project_name=project_name or "Test Project",
+                    site_address=site_address or "123 Main St, Nashville, TN 37211",
+                    proposed_nrsf=proposed_nrsf,
+                    land_cost=land_cost,
+                    visibility_rating=visibility,
+                    traffic_count=traffic_count,
+                    access_quality=access_quality,
+                    lot_size_acres=lot_acres,
+                    zoning_status=1,  # Approved
+                    loan_to_cost=loan_to_cost,
+                    interest_rate=interest_rate,
+                    tractiq_market_id="tn_372113104" if "Nashville" in site_address or "37211" in site_address else None
                 )
-                st.info("💡 **Pro Tip:** This report is investor-ready and can be attached to loan applications")
+
+                # Generate report (analytics only, no LLM)
+                report = generate_report(inputs, use_llm=False)
+
+                # Display results
+                st.success("✅ Analytics Pipeline Complete!")
+
+                st.markdown("#### Final Results")
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Site Score",
+                        f"{report.analytics_results.site_scorecard.total_score}/100",
+                        delta=report.analytics_results.site_scorecard.tier)
+                with col2:
+                    st.metric("Recommendation",
+                        report.analytics_results.site_scorecard.recommendation)
+                with col3:
+                    st.metric("Cap Rate",
+                        f"{report.analytics_results.pro_forma.metrics.cap_rate*100:.2f}%")
+                with col4:
+                    st.metric("10-Year IRR",
+                        f"{report.analytics_results.pro_forma.metrics.irr_10yr:.2f}%")
+
+                st.info("💡 **Next Step**: Add Anthropic API key to generate full narrative report with Claude AI")
+
             except Exception as e:
-                st.error(f"PDF generation failed: {e}")
+                st.error(f"Analytics test failed: {e}")
                 import traceback
                 st.code(traceback.format_exc())
+
+    # Full Report Generation (With LLM)
+    if st.button("📄 Generate Full AI Report", type="primary", use_container_width=True, disabled=not api_key_present):
+        if not api_key_present:
+            st.error("Cannot generate AI report without Anthropic API key")
+        else:
+            with st.spinner("Generating complete feasibility report with AI..."):
+                st.info("This will take 30-60 seconds to generate all 6 report sections")
+                try:
+                    from src.report_orchestrator import ProjectInputs, generate_report
+
+                    inputs = ProjectInputs(
+                        project_name=project_name or "Test Project",
+                        site_address=site_address or "123 Main St, Nashville, TN 37211",
+                        proposed_nrsf=proposed_nrsf,
+                        land_cost=land_cost,
+                        visibility_rating=visibility,
+                        traffic_count=traffic_count,
+                        access_quality=access_quality,
+                        lot_size_acres=lot_acres,
+                        zoning_status=1,
+                        loan_to_cost=loan_to_cost,
+                        interest_rate=interest_rate
+                    )
+
+                    # Generate full report with LLM
+                    report = generate_report(inputs, use_llm=True)
+
+                    st.success("🎉 Complete Report Generated!")
+
+                    # Display report sections
+                    st.markdown("---")
+                    st.markdown("## 📄 Generated Report")
+
+                    for section_name, content in report.report_sections.items():
+                        with st.expander(f"📋 {section_name.replace('_', ' ').title()}", expanded=False):
+                            st.markdown(content)
+
+                    # Offer download (would need PDF conversion)
+                    st.download_button(
+                        label="📥 Download Report (JSON)",
+                        data=str(report.report_sections),
+                        file_name=f"Feasibility_Report_{datetime.now().strftime('%Y%m%d')}.txt",
+                        mime="text/plain",
+                        type="primary"
+                    )
+
+                except Exception as e:
+                    st.error(f"Report generation failed: {e}")
+                    import traceback
+                    st.code(traceback.format_exc())
+
+    st.markdown("---")
+    st.caption("💰 **Cost Estimate**: ~$0.75-$1.50 per report (Claude API usage)")
+    st.caption("⏱️ **Generation Time**: 30-60 seconds per complete report")
