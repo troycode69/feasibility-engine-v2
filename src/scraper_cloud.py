@@ -22,12 +22,22 @@ def get_cloud_browser():
     chrome_options.add_argument('--disable-blink-features=AutomationControlled')
     chrome_options.add_argument('user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36')
 
-    # Use system chromium if available
-    chromium_path = '/usr/bin/chromium' if os.path.exists('/usr/bin/chromium') else '/usr/bin/chromium-browser'
-    if os.path.exists(chromium_path):
-        chrome_options.binary_location = chromium_path
+    # Use system chromium if available (Debian uses /usr/bin/chromium)
+    chromium_paths = ['/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome']
+    for path in chromium_paths:
+        if os.path.exists(path):
+            chrome_options.binary_location = path
+            print(f"Using chromium at: {path}")
+            break
 
-    service = Service('/usr/bin/chromedriver') if os.path.exists('/usr/bin/chromedriver') else None
+    # Debian uses /usr/bin/chromedriver from chromium-driver package
+    chromedriver_paths = ['/usr/bin/chromedriver', '/usr/lib/chromium/chromedriver']
+    service = None
+    for path in chromedriver_paths:
+        if os.path.exists(path):
+            service = Service(path)
+            print(f"Using chromedriver at: {path}")
+            break
 
     try:
         browser = webdriver.Chrome(service=service, options=chrome_options)
