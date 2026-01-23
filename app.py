@@ -391,7 +391,7 @@ elif page == "📊 Market Intel":
     # === TRACTIQ DATA UPLOAD (PDF + CSV Support) ===
     st.markdown("---")
     st.markdown("### 📄 TractIQ Market Data")
-    # File Upload - accepts all file types including Excel
+    # File Upload - accepts all file types (PDF, CSV, Excel, etc.)
     tractiq_files = st.file_uploader(
         "Drop TractIQ files here (PDF reports, CSV, Excel, or any data format)",
         type=None,
