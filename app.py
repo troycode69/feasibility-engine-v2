@@ -6,7 +6,7 @@ from datetime import datetime
 import re
 
 # VERSION MARKER - Force Streamlit Cloud to update
-APP_VERSION = "2.3.0-SCRAPER-FIX"
+APP_VERSION = "2.3.1-IMPORT-FIX"
 print(f"🚀 Starting Feasibility Engine {APP_VERSION}")
 
 # CRITICAL: Use st.write() early to verify code is deployed
@@ -113,12 +113,12 @@ try:
     if is_cloud:
         print("🌩️ FORCING SELENIUM SCRAPER FOR CLOUD")
         st.sidebar.success("✅ Using Selenium (Cloud)")
-        from scraper_cloud import get_competitors_realtime_cloud as get_competitors_realtime
+        from src.scraper_cloud import get_competitors_realtime_cloud as get_competitors_realtime
         print(f"   ✅ Selenium scraper loaded: {get_competitors_realtime}")
     else:
         print("💻 Local environment - using Playwright scraper")
         st.sidebar.info("💻 Using Playwright (Local)")
-        from scraper import get_competitors_realtime
+        from src.scraper import get_competitors_realtime
 except Exception as e:
     print(f"⚠️ Scraper import failed: {e}")
     st.sidebar.error(f"❌ Scraper failed: {str(e)[:50]}")
