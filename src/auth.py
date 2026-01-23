@@ -31,15 +31,12 @@ def authenticate_user():
     creds = None
 
     # Check if running in Streamlit Cloud (no interactive auth possible)
-    # In cloud, NEVER attempt interactive authentication
-    try:
-        import streamlit
-        # If streamlit is imported in a runtime context, we're in cloud
-        if hasattr(streamlit, 'runtime'):
-            logger.warning("Running in Streamlit Cloud - OAuth disabled.")
-            return None
-    except:
-        pass
+    # Only disable auth if we're in actual cloud environment, not local
+    is_cloud = os.getenv('STREAMLIT_RUNTIME_ENV') == 'cloud' or os.getenv('HOSTNAME', '').startswith('streamlit')
+
+    if is_cloud:
+        logger.warning("Running in Streamlit Cloud - OAuth disabled.")
+        return None
 
     # Also check if client secret file is missing
     if not os.path.exists(CLIENT_SECRET_FILE):
