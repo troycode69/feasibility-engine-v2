@@ -79,19 +79,24 @@ except Exception as e:
 
 LeaseUpModel = EnhancedLeaseUpModel = None
 try:
-    from leaseup_model import LeaseUpModel
-    from leaseup_model_v2 import EnhancedLeaseUpModel
-except Exception as e:
-    print(f"Lease-up models unavailable: {e}")
+    from src.leaseup_model import LeaseUpModel
+    from src.leaseup_model_v2 import EnhancedLeaseUpModel
+except:
+    LeaseUpModel = EnhancedLeaseUpModel = None
 
 # CRITICAL: CSV processor for Excel file uploads
 extract_csv_data = None
 try:
-    from csv_processor import extract_csv_data
+    from src.csv_processor import extract_csv_data
 except Exception as e:
     print(f"CSV processor unavailable: {e}")
     # This is critical - show error to user
-    st.error(f"Excel/CSV processing unavailable: {e}")
+    # st.error(f"Excel/CSV processing unavailable: {e}") # Suppress error on startup
+
+try:
+    from src.feasibility_engine import FeasibilityEngine
+except:
+    FeasibilityEngine = None
 # === TRACTIQ DATA INTEGRATION ===
 def load_tractiq_data():
     """
@@ -181,84 +186,105 @@ def merge_competitor_data(scraper_results):
     return merged
 
 # Set page config with logo as icon
-st.set_page_config(page_title="STORAGE OS", page_icon="assets/logo.png", layout="wide")
+st.set_page_config(page_title="StorSageHQ", page_icon="assets/logo.png", layout="wide")
 
-# === UPDATED BRAND CSS (NEUTRAL COLORS MATCHING LOGO) ===
+# === STORSAGE HQ BRANDING ===
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-    /* APPLY FONT ONLY TO MARKDOWN TEXT TO PROTECT ICONS */
+    
+    /* Global Typography */
     .stMarkdown, .stMarkdown div, .stMarkdown p, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4, .stMarkdown h5, .stMarkdown h6 {
         font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
     }
-    /* Shield all internal icons and specific Streamlit cache classes */
-    [data-testid="stIcon"], .st-emotion-cache-1ky7m6a, [data-testid="stSidebarCollapseButton"], .st-ae {
-        font-family: 'StreamlitIcons' !important;
+    
+    /* Background Color */
+    .stApp { background-color: #F4F6F8; } /* Neutral light gray */
+    
+    /* Headers - Navy Blue */
+    h1, h2, h3, h4, h5, h6 { 
+        color: #0C2340 !important; 
+        font-weight: 700 !important; 
     }
-    .stApp { background-color: #F4F6F8; } /* Neutral light gray background */
-    h1, h2, h3, h4, h5, h6 { color: #0C2340 !important; font-weight: 700 !important; } /* Navy for headers */
-    [data-testid="stSidebar"] { background-color: #0C2340; } /* Navy sidebar */
-    [data-testid="stSidebar"] * { color: white !important; }
-    .stButton>button[kind="primary"] { background-color: #4A90E2 !important; color: white !important; font-weight: 600 !important; } /* Soft blue for primary buttons */
-    .stButton>button[kind="secondary"] { background-color: transparent !important; border: 2px solid #0C2340 !important; color: #0C2340 !important; }
-    /* CRITICAL: FORCE READABLE METRICS */
-    [data-testid="stMetricValue"] {
-        font-size: 24px !important;
-        color: #0C2340 !important;
+    
+    /* Sidebar - Navy Blue Background, White Text */
+    [data-testid="stSidebar"] { background-color: #0C2340; }
+    [data-testid="stSidebar"] *, [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label { 
+        color: white !important; 
+    }
+    
+    /* Buttons - Soft Blue Accent */
+    .stButton>button[kind="primary"] { 
+        background-color: #4A90E2 !important; 
+        color: white !important; 
+        font-weight: 600 !important; 
+        border: none !important;
+        border-radius: 6px !important;
+    }
+    .stButton>button[kind="secondary"] { 
+        background-color: transparent !important; 
+        border: 2px solid #0C2340 !important; 
+        color: #0C2340 !important; 
+        border-radius: 6px !important;
+    }
+    
+    /* Metrics - Card Style */
+    div[data-testid="metric-container"] {
+        background-color: #FFFFFF !important;
+        border: 1px solid #0C2340 !important; /* Navy Border */
+        padding: 20px !important;
+        border-radius: 10px !important;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05); /* Subtle shadow for lift */
+    }
+    [data-testid="stMetricLabel"] {
+        color: #666666 !important;
+        font-size: 14px !important;
         font-weight: 600 !important;
     }
-    div[data-testid="metric-container"] {
-        background-color: white !important;
-        border: 1px solid #E0E0E0 !important; /* Neutral gray border */
-        padding: 15px !important; /* More padding for breathing room */
-        border-radius: 8px !important;
-        border-left: 5px solid #4A90E2 !important; /* Soft blue accent */
+    [data-testid="stMetricValue"] {
+        font-size: 28px !important;
+        color: #0C2340 !important; /* Navy Value */
+        font-weight: 700 !important;
     }
-    div[data-testid="stMetric"] {
-        background-color: #ffffff !important;
-        border: 1px solid #E0E0E0 !important;
-        padding: 15px !important;
-        border-radius: 8px !important;
+    
+    /* Expander Styling */
+    .streamlit-expanderHeader {
+        background-color: #FFFFFF !important;
         color: #0C2340 !important;
+        border-radius: 6px !important;
     }
-    div[data-testid="stMetric"] label {
-        color: #666666 !important; /* Neutral gray labels */
-        font-size: 14px !important;
-    }
-    /* Global text color scoped to main app and markdown to avoid breaking dark-background elements */
-    .stApp, .stMarkdown {
-        color: #0C2340 !important;
-    }
-    /* SCORE CARD STYLING */
-    .score-card {
-        background: linear-gradient(135deg, #0C2340 0%, #1A3A5C 100%); /* Navy gradient */
-        color: white !important;
-        padding: 25px; /* More padding */
-        border-radius: 10px; /* Softer corners */
-        text-align: center;
-    }
-    .score-card h1, .score-card p {
-        color: white !important;
-    }
-    /* FILE UPLOADER VISIBILITY FIX */
+    
+    /* File Uploader */
     [data-testid="stFileUploader"] {
-        background-color: white !important;
-        padding: 20px !important; /* More padding */
+        background-color: #FFFFFF !important;
+        border: 2px dashed #4A90E2 !important; /* Blue dashed border */
         border-radius: 10px !important;
-        border: 1px dashed #0C2340 !important;
-    }
-    [data-testid="stFileUploader"] * {
-        color: #0C2340 !important;
-    }
-    /* Add more whitespace globally */
-    .block-container {
         padding: 20px !important;
     }
+    
+    /* Tooltips and Help */
+    .stTooltipIcon {
+        color: #4A90E2 !important;
+    }
+
+    /* Score Card Styling */
+    .score-card {
+        background: linear-gradient(135deg, #0C2340 0%, #1A3A5C 100%);
+        color: white !important;
+        padding: 30px;
+        border-radius: 12px;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(12, 35, 64, 0.2);
+    }
+    .score-card h1, .score-card p { color: white !important; }
+
+    /* Adjust padding */
+    .block-container { padding-top: 2rem !important; }
 </style>
 """, unsafe_allow_html=True)
 
 # Display the logo prominently at the top
-# st.image("assets/logo.png", use_column_width=False, width=300)  # Commented out - logo file missing
+st.image("assets/logo.png", width=120)
 
 # Session state
 if "ai_assistant" not in st.session_state:
@@ -278,9 +304,11 @@ if "all_competitors" not in st.session_state:
     st.session_state.all_competitors = []
 if "pdf_ext_data" not in st.session_state:
     st.session_state.pdf_ext_data = {}
+if "feasibility_engine" not in st.session_state and FeasibilityEngine:
+    st.session_state.feasibility_engine = FeasibilityEngine()
 
-st.title("🏢 STORAGE OS")
-st.caption("Production Self-Storage Feasibility Platform | v2.0")
+st.title("🛡️ StorSageHQ")
+st.caption("AI-Powered Self-Storage Feasibility & Market Intelligence Platform")
 
 with st.sidebar:
     st.header("Navigation")
@@ -524,73 +552,37 @@ elif page == "📊 Market Intel":
         if not market_name:
             market_name = "Market Data"
         # Extract data from all files (PDF and CSV)
-        total_competitors = 0
-        total_rates = 0
-        for file in tractiq_files:
-            file_ext = file.name.split('.')[-1].lower()
-            # Extract data based on file type
-            with st.spinner(f"Analyzing {file.name}..."):
-                file.seek(0) # Reset file pointer
-                if file_ext == 'pdf':
-                    if extract_pdf_data:
-                        ext_result = extract_pdf_data(file)
+        if st.button("🚀 Process Files", type="primary"):
+            if not tractiq_files:
+                st.warning("Please upload files first.")
+            else:
+                with st.spinner(f"Processing {len(tractiq_files)} files..."):
+                    engine = st.session_state.feasibility_engine
+                    if engine:
+                        results = engine.process_uploaded_files(tractiq_files, market_name=market_name)
+                        
+                        # Update Session State
+                        processed_data = results.get("results", {})
+                        st.session_state.pdf_ext_data.update(processed_data)
+                        
+                        # Show Summary
+                        summary = results.get("summary", {})
+                        st.success(f"✅ Extracted data from {summary['success_count']} files")
+                        st.info(results.get("cache_status", ""))
+                        
+                        # Detailed Results
+                        for fname, data in processed_data.items():
+                            if data.get('error'):
+                                st.error(f"{fname}: {data['error']}")
+                            else:
+                                with st.expander(f"📊 Details: {fname}", expanded=False):
+                                    st.json({
+                                        "competitors": len(data.get('competitors', [])),
+                                        "rates": len(data.get('extracted_rates', [])),
+                                        "unit_mix": list(data.get('unit_mix', {}).keys())
+                                    })
                     else:
-                        st.error("PDF processing not available")
-                        continue
-                elif file_ext == 'csv':
-                    if extract_csv_data:
-                        ext_result = extract_csv_data(file)
-                    else:
-                        st.error("CSV processing not available")
-                        continue
-                elif file_ext in ['xlsx', 'xls']:
-                    if extract_csv_data:
-                        ext_result = extract_csv_data(file)
-                    else:
-                        st.error("Excel processing not available")
-                        continue
-                else:
-                    st.warning(f"Unsupported file type: {file.name}. Supported: PDF, CSV, Excel (xlsx/xls)")
-                    continue
-            st.session_state.pdf_ext_data[file.name] = ext_result
-
-            # Show errors if any
-            if ext_result.get('error'):
-                st.error(f"Error processing {file.name}: {ext_result['error']}")
-                if ext_result.get('error_details'):
-                    with st.expander("Error Details"):
-                        st.code(ext_result['error_details'])
-
-            # Count totals
-            total_competitors += len(ext_result.get('competitors', []))
-            total_rates += len(ext_result.get('extracted_rates', []))
-            # Show extraction summary as toasts
-            if ext_result.get('competitors'):
-                st.toast(f"📊 Found {len(ext_result['competitors'])} competitors in {file.name}")
-            if ext_result.get('extracted_rates'):
-                st.toast(f"📈 Found {len(ext_result['extracted_rates'])} rates in {file.name}")
-            if ext_result.get('unit_mix'):
-                st.toast(f"🏢 Found unit mix data in {file.name}")
-            # Show detailed extraction results in expander
-            with st.expander(f"📊 Details: {file.name}", expanded=False):
-                st.json({
-                    "source_type": ext_result.get('source_type', 'Unknown'),
-                    "competitors_found": len(ext_result.get('competitors', [])),
-                    "rates_found": len(ext_result.get('extracted_rates', [])),
-                    "unit_mix_sizes": list(ext_result.get('unit_mix', {}).keys()),
-                    "historical_periods": len(ext_result.get('historical_trends', [])),
-                    "market_metrics": list(ext_result.get('market_metrics', {}).keys()),
-                    "pipeline_risk": ext_result.get('pipeline_risk', 'Standard')
-                })
-                # Show sample competitors
-                if ext_result.get('competitors'):
-                    st.markdown("**Sample Competitors:**")
-                    for comp in ext_result['competitors'][:3]:
-                        st.write(comp)
-        # Show success summary (skip caching in cloud)
-        if st.session_state.pdf_ext_data:
-            st.success(f"✅ Extracted data from {len(tractiq_files)} files: {total_competitors} competitors, {total_rates} rates")
-            st.info(f"💾 Data cached for market: **{market_name}** (session only)")
+                        st.error("Feasibility Engine not initialized")
     # === AI-POWERED AUTOMATION ===
     st.markdown("---")
     st.markdown("### 🤖 AI-Powered Analysis")
@@ -601,68 +593,61 @@ elif page == "📊 Market Intel":
             st.info("💡 **NEW**: Click below to automatically analyze this site using AI vision, real-time economic data, and competitor intelligence")
         with col_ai2:
             if st.button("🚀 Run AI Analysis", type="primary", use_container_width=True):
-                with st.spinner("Running AI analysis..."):
+                engine = st.session_state.feasibility_engine
+                if not engine:
+                    st.error("AI Engine unavailable")
+                else:
                     try:
-                        from src.site_intelligence import SiteIntelligence
-                        from src.economic_data import fetch_economic_data
-                        from src.competitor_intelligence import get_competitor_intelligence
-                        from src.demographics_data import fetch_demographics_data
-                        address = st.session_state.property_data['address']
-                        lat = st.session_state.property_data['lat']
-                        lon = st.session_state.property_data['lon']
-                        # Initialize AI status
-                        if 'ai_results' not in st.session_state:
-                            st.session_state.ai_results = {}
-                        # 1. AI Site Analysis
-                        with st.status("Analyzing site with AI vision...", expanded=True) as status:
-                            st.write("📸 Fetching Street View imagery...")
-                            site_analyzer = SiteIntelligence()
-                            ai_site_scores = site_analyzer.analyze_complete_site(
-                                address=address,
-                                parcel_sqft=100000, # Default
-                                proposed_nra=60000 # Default
-                            )
-                            st.session_state.ai_results['site'] = ai_site_scores
-                            st.write("✅ Site analysis complete")
-                            status.update(label="Site analysis complete", state="complete")
-                        # 2. Demographics Data (Phase 2!)
-                        with st.status("Fetching age demographics...", expanded=True) as status:
-                            st.write("👥 Querying Census Bureau API...")
-                            demographics_data = fetch_demographics_data(lat, lon)
-                            st.session_state.ai_results['demographics'] = demographics_data
-                            st.write(f"✅ Age 25-54: {demographics_data['age_25_54_pct']}%")
-                            status.update(label="Demographics retrieved", state="complete")
-                        # 3. Economic Data
-                        with st.status("Fetching real-time economic data...", expanded=True) as status:
-                            st.write("📊 Querying BLS API...")
-                            economic_indicators = fetch_economic_data(lat, lon)
-                            st.session_state.ai_results['economic'] = economic_indicators
-                            st.write(f"✅ Unemployment: {economic_indicators['unemployment']}%")
-                            status.update(label="Economic data retrieved", state="complete")
-                        # 4. Competitor Intelligence
-                        with st.status("Analyzing competitor landscape...", expanded=True) as status:
-                            st.write("🏢 Processing competitor data...")
-                            if filtered_comps:
-                                comp_intelligence = get_competitor_intelligence(
-                                    competitors=filtered_comps,
-                                    your_rate_psf=1.20 # Default
-                                )
-                                st.session_state.ai_results['competitors'] = comp_intelligence
-                                st.write(f"✅ Analyzed {comp_intelligence['count']} competitors")
-                            else:
-                                st.session_state.ai_results['competitors'] = {
-                                    'count': 0,
-                                    'quality': 'Average',
-                                    'pricing': 'At Market'
-                                }
-                                st.write("⚠️ No competitor data available")
-                            status.update(label="Competitor analysis complete", state="complete")
-                        st.success("🎉 AI Analysis Complete! Results displayed below.")
-                        st.rerun()
+                        address = st.session_state.property_data.get('address')
+                        lat = st.session_state.property_data.get('lat')
+                        lon = st.session_state.property_data.get('lon')
+                        
+                        if not lat or not lon:
+                            st.warning("Please update map coordinates first.")
+                        else:
+                            # Initialize results container
+                            if 'ai_results' not in st.session_state:
+                                st.session_state.ai_results = {}
+
+                            # Create status containers
+                            status_site = st.status("Analyzing site...", expanded=False)
+                            status_demo = st.status("Fetching demographics...", expanded=False)
+                            status_econ = st.status("Fetching economic data...", expanded=False)
+                            status_comp = st.status("Analyzing competitors...", expanded=False)
+                            
+                            statuses = {
+                                "site": status_site,
+                                "demographics": status_demo,
+                                "economic": status_econ,
+                                "competitors": status_comp
+                            }
+                            
+                            # Stream results from generator
+                            for update in engine.run_ai_analysis_orchestration(
+                                address=address, lat=lat, lon=lon, filtered_comps=filtered_comps
+                            ):
+                                step = update["step"]
+                                status_widget = statuses.get(step)
+                                
+                                if update["status"] == "running":
+                                    status_widget.update(label=update["message"], state="running")
+                                elif update["status"] == "complete":
+                                    # Update session state with result
+                                    st.session_state.ai_results[step] = update["data"]
+                                    # Update UI
+                                    if "error" in update["data"]:
+                                        status_widget.update(label=f"❌ {step.title()} Failed", state="error")
+                                        st.error(f"{step}: {update['data']['error']}")
+                                        # Keep expanded if error
+                                        status_widget.update(expanded=True) 
+                                    else:
+                                        status_widget.update(label=f"✅ {step.title()} Complete", state="complete")
+                            
+                            st.success("🎉 AI Analysis Complete!")
+                            st.rerun()
+                            
                     except Exception as e:
-                        st.error(f"AI Analysis failed: {e}")
-                        import traceback
-                        st.code(traceback.format_exc())
+                        st.error(f"Analysis failed: {e}")
         # Display AI Results
         if 'ai_results' in st.session_state and st.session_state.ai_results:
             st.markdown("---")
