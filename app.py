@@ -479,14 +479,22 @@ elif page == "📊 Market Intel":
                     with st.spinner("🚀 Pre-fetching 20-mile trade area data..."):
                         try:
                             scout_results = get_competitors_realtime(coords_lat, coords_lon, radius_miles=20)
-                            # Enrich with TractiQ
-                            enriched_results = merge_competitor_data(scout_results)
-                            st.session_state.all_competitors = enriched_results
-                            st.toast("✅ 20mi Scrape Cached & Enriched")
+
+                            if not scout_results or len(scout_results) == 0:
+                                st.warning(f"Scraper returned 0 competitors. Check Streamlit Cloud logs for errors.")
+                            else:
+                                # Enrich with TractiQ
+                                enriched_results = merge_competitor_data(scout_results)
+                                st.session_state.all_competitors = enriched_results
+                                st.success(f"✅ Found {len(enriched_results)} competitors within 20 miles!")
                         except Exception as e:
-                            st.error(f"Pre-fetch failed: {e}")
+                            import traceback
+                            error_details = traceback.format_exc()
+                            st.error(f"Scraper failed: {str(e)}")
+                            with st.expander("Error Details"):
+                                st.code(error_details)
                 else:
-                    st.warning("Real-time competitor scraping unavailable in cloud environment. Upload TractIQ Excel files to add competitor data.")
+                    st.warning("Real-time competitor scraping unavailable. Upload TractIQ Excel files to add competitor data.")
     # === REAL-TIME COMPETITOR SCRAPING ===
     st.markdown("---")
     st.markdown("### 🕵️ Real-Time Competitive Scouting")
