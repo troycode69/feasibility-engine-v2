@@ -26,8 +26,23 @@ class TractIQCache:
     def _load_index(self):
         """Load cache index from disk"""
         if self.index_file.exists():
-            with open(self.index_file, 'r') as f:
-                self.index = json.load(f)
+            try:
+                with open(self.index_file, 'r') as f:
+                    content = f.read().strip()
+                    if content:
+                        self.index = json.loads(content)
+                    else:
+                        # Empty file, use default
+                        self.index = {
+                            "markets": {},  # market_id -> metadata
+                            "last_updated": None
+                        }
+            except (json.JSONDecodeError, ValueError):
+                # Invalid JSON, use default
+                self.index = {
+                    "markets": {},  # market_id -> metadata
+                    "last_updated": None
+                }
         else:
             self.index = {
                 "markets": {},  # market_id -> metadata
