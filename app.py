@@ -804,15 +804,6 @@ elif page == "📊 Market Intel":
     if hasattr(results, 'site_scorecard') and results.site_scorecard:
         scorecard = results.site_scorecard
 
-        # Debug info
-        with st.expander("🔍 Debug: Scorecard Structure"):
-            st.write(f"**Scorecard type:** {type(scorecard).__name__}")
-            st.write(f"**Total score:** {scorecard.total_score}")
-            st.write(f"**Has demographics attr:** {hasattr(scorecard, 'demographics')}")
-            if hasattr(scorecard, 'demographics'):
-                st.write(f"**Demographics type:** {type(scorecard.demographics).__name__}")
-                st.write(f"**Demographics total_score attr:** {hasattr(scorecard.demographics, 'total_score')}")
-
         # Big score display
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
@@ -834,20 +825,15 @@ elif page == "📊 Market Intel":
             col1, col2, col3, col4, col5 = st.columns(5)
 
             with col1:
-                st.metric("Demographics", f"{scorecard.demographics.total_score}/25",
-                         delta=f"{scorecard.demographics.tier}")
+                st.metric("Demographics", f"{scorecard.demographics.total_score}/25")
             with col2:
-                st.metric("Supply/Demand", f"{scorecard.supply_demand.total_score}/25",
-                         delta=f"{scorecard.supply_demand.tier}")
+                st.metric("Supply/Demand", f"{scorecard.supply_demand.total_score}/25")
             with col3:
-                st.metric("Site Attributes", f"{scorecard.site_attributes.total_score}/25",
-                         delta=f"{scorecard.site_attributes.tier}")
+                st.metric("Site Attributes", f"{scorecard.site_attributes.total_score}/25")
             with col4:
-                st.metric("Competitive", f"{scorecard.competitive_positioning.total_score}/15",
-                         delta=f"{scorecard.competitive_positioning.tier}")
+                st.metric("Competitive", f"{scorecard.competitive_positioning.total_score}/15")
             with col5:
-                st.metric("Economic", f"{scorecard.economic_market.total_score}/10",
-                         delta=f"{scorecard.economic_market.tier}")
+                st.metric("Economic", f"{scorecard.economic_market.total_score}/10")
         except AttributeError as e:
             st.error(f"⚠️ Score breakdown display error: {str(e)}")
             st.info("Some score category data may be missing. The analysis may need to be re-run.")
