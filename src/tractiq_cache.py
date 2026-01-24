@@ -276,9 +276,21 @@ class TractIQCache:
 
 
 # Convenience functions for use in Streamlit app
-def cache_tractiq_data(market_name: str, pdf_extractions: Dict[str, Dict]) -> str:
-    """Store TractIQ data in persistent cache"""
+def cache_tractiq_data(market_id: str, market_name: str, tractiq_data: Dict) -> str:
+    """
+    Store TractIQ data in persistent cache.
+
+    Args:
+        market_id: Unique market identifier
+        market_name: Human-readable market name (address)
+        tractiq_data: Processed TractiQ data from process_tractiq_files
+
+    Returns:
+        market_id used for storage
+    """
     cache = TractIQCache()
+    # Format as pdf_extractions dict
+    pdf_extractions = {"uploaded_data": tractiq_data}
     return cache.store_market_data(market_name, pdf_extractions, overwrite=False)
 
 

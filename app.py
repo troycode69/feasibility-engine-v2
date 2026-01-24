@@ -511,6 +511,50 @@ if page == "📝 Project Inputs":
 
     st.markdown("---")
 
+    # TractiQ Data Upload
+    st.markdown("### 📁 TractiQ Market Data (Optional)")
+    st.info("Upload TractiQ competitor reports (PDF, CSV, Excel) to enhance market analysis with detailed rate data by unit size and climate control.")
+
+    uploaded_files = st.file_uploader(
+        "Drop TractiQ Reports Here",
+        type=['pdf', 'csv', 'xlsx', 'xls'],
+        accept_multiple_files=True,
+        help="Upload TractiQ market reports for this address. Data will be cached to build your market database."
+    )
+
+    tractiq_market_id = None
+    if uploaded_files:
+        st.success(f"✅ {len(uploaded_files)} file(s) uploaded")
+        with st.expander("📄 View Uploaded Files"):
+            for file in uploaded_files:
+                st.write(f"- {file.name} ({file.size:,} bytes)")
+
+        # Process and cache the files
+        try:
+            from src.tractiq_processor import process_tractiq_files
+            from src.tractiq_cache import cache_tractiq_data
+
+            # Process uploaded files to extract data
+            with st.spinner("Processing TractiQ data..."):
+                tractiq_data = process_tractiq_files(uploaded_files)
+
+                # Cache the data associated with this address
+                if tractiq_data:
+                    # Create market ID from address (will geocode to get zip code)
+                    import re
+                    address_parts = project_address.lower().replace(',', '').split()
+                    # Simple market ID for now - will be improved with geocoding
+                    market_id = f"tractiq_{hash(project_address) % 100000000}"
+                    tractiq_market_id = market_id
+
+                    cache_tractiq_data(market_id, project_address, tractiq_data)
+                    st.success(f"✅ TractiQ data cached for this market (ID: {market_id})")
+        except Exception as e:
+            st.warning(f"⚠️ Could not process TractiQ files: {str(e)}")
+            st.info("Analysis will proceed with scraped competitor data only")
+
+    st.markdown("---")
+
     # BIG ANALYZE BUTTON
     st.markdown("### 🚀 Ready to Analyze?")
 
@@ -537,6 +581,7 @@ if page == "📝 Project Inputs":
                     land_cost=land_cost if land_cost else 0,
                     loan_to_cost=loan_to_cost,
                     interest_rate=interest_rate,
+                    tractiq_market_id=tractiq_market_id,  # Pass TractiQ data if uploaded
                     # Will add more parameters as needed
                 )
 
@@ -781,9 +826,10 @@ elif page == "📊 Market Intel":
         with st.expander("📦 Supply/Demand Details"):
             supply = scorecard.supply_demand
             st.write(f"**SF per Capita (3mi):** {supply.sf_per_capita:.2f} - Score: {supply.sf_per_capita_score}/5 ({supply.sf_per_capita_tier})")
-            st.write(f"**Market Balance:** {supply.balance_tier}")
-            st.write(f"**Avg Occupancy:** {supply.existing_occupancy_avg:.1f}%")
-            st.write(f"**Distance to Nearest:** {supply.distance_to_nearest:.2f} mi")
+            st.write(f"**Avg Occupancy:** {supply.existing_occupancy_avg:.1f}% - Score: {supply.existing_occupancy_avg_score}/5 ({supply.existing_occupancy_avg_tier})")
+            st.write(f"**Distance to Nearest:** {supply.distance_to_nearest:.2f} mi - Score: {supply.distance_to_nearest_score}/5 ({supply.distance_to_nearest_tier})")
+            st.write(f"**Rate Trend (12mo):** {supply.market_rate_trend:+.1f}% - Score: {supply.market_rate_trend_score}/5 ({supply.market_rate_trend_tier})")
+            st.write(f"**Dev Pipeline:** {supply.development_pipeline} facilities - Score: {supply.development_pipeline_score}/5 ({supply.development_pipeline_tier})")
 
     st.markdown("---")
 
