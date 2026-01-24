@@ -408,16 +408,23 @@ if page == "📝 Project Inputs":
 
     # REQUIRED INPUTS
     st.markdown("### 🎯 Required Information")
+
+    # Use session state keys to persist text input values across reruns
+    if "input_address" not in st.session_state:
+        st.session_state.input_address = st.session_state.property_data.get('address', '')
+    if "input_name" not in st.session_state:
+        st.session_state.input_name = st.session_state.property_data.get('name', '')
+
     project_address = st.text_input(
         "Site Address*",
-        value=st.session_state.property_data.get('address', ''),
+        key="input_address",
         placeholder="Enter the property address (e.g., 123 Main St, Nashville, TN 37211)",
         help="This is the only required field to start analysis"
     )
 
     project_name = st.text_input(
         "Project Name (Optional)",
-        value=st.session_state.property_data.get('name', ''),
+        key="input_name",
         placeholder="e.g., Nashville Storage Center",
         help="Optional - will use address if left blank"
     )
@@ -519,39 +526,56 @@ if page == "📝 Project Inputs":
         "Drop TractiQ Reports Here",
         type=['pdf', 'csv', 'xlsx', 'xls'],
         accept_multiple_files=True,
-        help="Upload TractiQ market reports for this address. Data will be cached to build your market database."
+        help="Upload TractiQ market reports for this address. Data will be cached to build your market database.",
+        key="tractiq_uploader"
     )
 
-    tractiq_market_id = None
+    # Initialize tractiq_market_id in session state
+    if "tractiq_market_id" not in st.session_state:
+        st.session_state.tractiq_market_id = None
+
+    tractiq_market_id = st.session_state.tractiq_market_id
+
     if uploaded_files:
         st.success(f"✅ {len(uploaded_files)} file(s) uploaded")
         with st.expander("📄 View Uploaded Files"):
             for file in uploaded_files:
                 st.write(f"- {file.name} ({file.size:,} bytes)")
 
-        # Process and cache the files
-        try:
-            from src.tractiq_processor import process_tractiq_files
-            from src.tractiq_cache import cache_tractiq_data
+        # Check if we need to process files (only process if not already processed)
+        file_names = [f.name for f in uploaded_files]
+        if "processed_tractiq_files" not in st.session_state or st.session_state.get("processed_tractiq_files") != file_names:
+            # Process and cache the files
+            try:
+                from src.tractiq_processor import process_tractiq_files
+                from src.tractiq_cache import cache_tractiq_data
 
-            # Process uploaded files to extract data
-            with st.spinner("Processing TractiQ data..."):
-                tractiq_data = process_tractiq_files(uploaded_files)
+                # Process uploaded files to extract data
+                with st.spinner("Processing TractiQ data..."):
+                    tractiq_data = process_tractiq_files(uploaded_files)
 
-                # Cache the data associated with this address
-                if tractiq_data:
-                    # Create market ID from address (will geocode to get zip code)
-                    import re
-                    address_parts = project_address.lower().replace(',', '').split()
-                    # Simple market ID for now - will be improved with geocoding
-                    market_id = f"tractiq_{hash(project_address) % 100000000}"
-                    tractiq_market_id = market_id
+                    # Cache the data associated with this address
+                    if tractiq_data:
+                        # Create market ID from address (will geocode to get zip code)
+                        import re
+                        address_parts = project_address.lower().replace(',', '').split()
+                        # Simple market ID for now - will be improved with geocoding
+                        market_id = f"tractiq_{hash(project_address) % 100000000}"
 
-                    cache_tractiq_data(market_id, project_address, tractiq_data)
-                    st.success(f"✅ TractiQ data cached for this market (ID: {market_id})")
-        except Exception as e:
-            st.warning(f"⚠️ Could not process TractiQ files: {str(e)}")
-            st.info("Analysis will proceed with scraped competitor data only")
+                        cache_tractiq_data(market_id, project_address, tractiq_data)
+
+                        # Store in session state
+                        st.session_state.tractiq_market_id = market_id
+                        st.session_state.processed_tractiq_files = file_names
+                        tractiq_market_id = market_id
+
+                        st.success(f"✅ TractiQ data processed and cached for this market")
+                        st.rerun()
+            except Exception as e:
+                st.warning(f"⚠️ Could not process TractiQ files: {str(e)}")
+                st.info("Analysis will proceed with scraped competitor data only")
+        else:
+            st.info(f"✅ TractiQ data ready (Market ID: {st.session_state.tractiq_market_id})")
 
     st.markdown("---")
 
@@ -581,7 +605,7 @@ if page == "📝 Project Inputs":
                     land_cost=land_cost if land_cost else 0,
                     loan_to_cost=loan_to_cost,
                     interest_rate=interest_rate,
-                    tractiq_market_id=tractiq_market_id,  # Pass TractiQ data if uploaded
+                    tractiq_market_id=st.session_state.get("tractiq_market_id"),  # Pass TractiQ data if uploaded
                     # Will add more parameters as needed
                 )
 
