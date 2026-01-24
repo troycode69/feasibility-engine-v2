@@ -541,8 +541,11 @@ if page == "📝 Project Inputs":
 
         # Auto-set the tractiq_market_id from cached data
         if "tractiq_market_id" not in st.session_state or not st.session_state.tractiq_market_id:
-            # Generate same market ID as when uploading
-            market_id = f"tractiq_{hash(project_address) % 100000000}"
+            # Use the normalized market_id from the cache
+            # The cache generates this by normalizing the address
+            from src.tractiq_cache import TractIQCache
+            cache = TractIQCache()
+            market_id = cache._generate_market_id(project_address)
             st.session_state.tractiq_market_id = market_id
 
         st.info("You can upload additional TractiQ files below to add to the cached data, or proceed with analysis using existing data.")
@@ -583,13 +586,8 @@ if page == "📝 Project Inputs":
 
                     # Cache the data associated with this address
                     if tractiq_data:
-                        # Create market ID from address (will geocode to get zip code)
-                        import re
-                        address_parts = project_address.lower().replace(',', '').split()
-                        # Simple market ID for now - will be improved with geocoding
-                        market_id = f"tractiq_{hash(project_address) % 100000000}"
-
-                        cache_tractiq_data(market_id, project_address, tractiq_data)
+                        # Use address as market identifier - cache will normalize it
+                        market_id = cache_tractiq_data(project_address, tractiq_data)
 
                         # Store in session state
                         st.session_state.tractiq_market_id = market_id
