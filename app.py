@@ -522,14 +522,26 @@ if page == "📝 Project Inputs":
     st.markdown("### 📁 TractiQ Market Data (Optional)")
 
     # Check if we have cached data for this address
-    from src.tractiq_cache import get_cached_tractiq_data, get_market_stats
+    from src.tractiq_cache import get_cached_tractiq_data, get_market_stats, TractIQCache
 
     cached_data = None
     cached_stats = None
     if project_address:
+        # Debug: Show what we're looking for
+        cache = TractIQCache()
+        normalized_id = cache._generate_market_id(project_address)
+
+        with st.expander("🔍 Debug: Cache Lookup"):
+            st.write(f"**Address entered:** {project_address}")
+            st.write(f"**Normalized ID:** {normalized_id}")
+            st.write(f"**Available markets:** {list(cache.index.get('markets', {}).keys())}")
+
         cached_data = get_cached_tractiq_data(project_address)
         if cached_data:
             cached_stats = get_market_stats(project_address)
+            st.write(f"🎯 Cache hit! Found {len(cached_data)} data sources")
+        else:
+            st.write(f"❌ No cached data found for this address")
 
     # Show cached data status
     if cached_data and cached_stats:
