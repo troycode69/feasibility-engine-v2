@@ -6,7 +6,7 @@ from datetime import datetime
 import re
 
 # VERSION MARKER - Force Streamlit Cloud to update
-APP_VERSION = "2.4.0-PRODUCTION"
+APP_VERSION = "2.5.0-PRODUCTION"
 
 # CRITICAL: Use st.write() early to verify code is deployed
 import streamlit as st
@@ -249,111 +249,190 @@ if "feasibility_engine" not in st.session_state and FeasibilityEngine:
 # === STORSAGE HQ BRANDING (THEME LOCKED) ===
 st.markdown("""
 <style>
-    /* --- 1. GLOBAL RESET --- */
+    /* --- 1. GLOBAL RESET & TYPOGRAPHY --- */
     .stApp {
         background-color: #F4F6F8 !important; /* Light Gray Background */
-    }
-    
-    /* Global Text Defaults - Navy */
-    .stApp p, .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6, .stApp li, .stApp span, .stApp label {
         color: #0C2340 !important;
+        font-family: 'Inter', sans-serif !important;
+        padding-top: 80px !important; /* Offset for Fixed SaaS Header */
     }
 
-    /* --- 2. SIDEBAR - SEAMLESS BLEND --- */
-    [data-testid="stSidebar"] {
-        background-color: #0C2340 !important; /* Exact Brand Navy */
+    /* --- 2. FIXED SAAS HEADER --- */
+    /* Target the container that wraps the navigation radio group */
+    div[data-testid="stVerticalBlock"] > div.element-container:has(div[role="radiogroup"]) {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important; /* Full Screen Width */
+        height: 70px !important;
+        background-color: #0C2340 !important; /* StorSageHQ Navy */
+        z-index: 999999 !important; /* Above Deploy Bar */
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important; /* Center the tabs */
+        border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+        padding: 0 !important;
+        margin: 0 !important;
     }
-    /* All sidebar text must be White */
+
+    /* Radio Group - Strict Single Row Flex */
+    div[role="radiogroup"] {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-wrap: nowrap !important; /* CRITICAL: No wrapping */
+        gap: 0 !important;
+        background-color: transparent !important;
+        border: none !important;
+        width: auto !important;
+    }
+
+    /* Hide ugly radio circles */
+    div[role="radiogroup"] input[type="radio"] {
+        display: none !important;
+    }
+    div[role="radiogroup"] label > div:first-child {
+        display: none !important;
+    }
+
+    /* Nav Tabs Styling */
+    div[role="radiogroup"] label {
+        flex: 0 1 auto !important; /* Do not stretch */
+        white-space: nowrap !important; /* CRITICAL: Prevent wrapping */
+        margin: 0 15px !important; /* Spacing between tabs */
+        padding: 10px 20px !important;
+        background-color: transparent !important;
+        border: none !important;
+        border-radius: 4px !important;
+        transition: all 0.2s ease !important;
+        cursor: pointer !important;
+    }
+
+    /* Tab Text */
+    div[role="radiogroup"] p {
+        color: #FFFFFF !important;
+        font-weight: 500 !important;
+        font-size: 15px !important;
+        margin: 0 !important;
+    }
+
+    /* Active State Highlight */
+    div[role="radiogroup"] label:has(div[data-checked="true"]) {
+        background-color: #1A3A5E !important; /* Lighter Navy */
+        border-bottom: 2px solid #4A90E2 !important; /* Accent Blue */
+    }
+
+    /* Hover State */
+    div[role="radiogroup"] label:hover {
+        background-color: rgba(255,255,255,0.05) !important;
+    }
+
+    /* --- 3. SIDEBAR STYLING --- */
+    [data-testid="stSidebar"] {
+        background-color: #0C2340 !important;
+    }
     [data-testid="stSidebar"] * {
         color: #FFFFFF !important;
     }
 
-    /* --- 3. TOP NAVIGATION HEADER --- */
-    /* Container for the Top Nav (Radio Group) */
-    div[role="radiogroup"] {
-        background-color: #0C2340 !important;
-        padding: 10px 20px !important;
-        border-radius: 8px !important;
-        margin-bottom: 20px !important;
-        border: 1px solid #1A3A5C !important;
-    }
-    /* Nav Items Text (Top Nav Labels) */
-    div[role="radiogroup"] p {
-        color: #FFFFFF !important; /* Force White Text */
-        font-weight: 600 !important;
-        background-color: transparent !important;
-    }
-    div[role="radiogroup"] div {
-        color: #FFFFFF !important;
-    }
-    /* Active Tab Highlight */
-    div[role="radiogroup"] [data-checked="true"] + div {
-        color: #4A90E2 !important; /* Blue text for active tab */
-    }
-
-    /* --- 4. METRIC CARDS --- */
-    div[data-testid="metric-container"] {
-        background-color: #FFFFFF !important; /* White Card */
-        border: 1px solid #0C2340 !important; /* Navy Border */
-        border-radius: 8px !important;
-        padding: 16px !important;
-        box-shadow: 0 2px 4px rgba(12, 35, 64, 0.1) !important;
-    }
-    /* Label styling */
-    [data-testid="stMetricLabel"] {
-        color: #0C2340 !important; /* Navy Label */
-    }
-    /* Value styling */
-    [data-testid="stMetricValue"] {
-        color: #4A90E2 !important; /* Brand Blue */
-        font-weight: 700 !important;
-    }
-
-    /* --- 5. INPUTS & BUTTONS --- */
-    
-    /* FILE UPLOADER - Navy Box, White Text */
-    [data-testid="stFileUploader"] {
-        background-color: #0C2340 !important;
-        border: 1px dashed #FFFFFF !important;
-        border-radius: 8px !important;
-    }
-    [data-testid="stFileUploader"] section {
-        background-color: #0C2340 !important;
-    }
-    /* Force "Drag and drop" text to White */
-    [data-testid="stFileUploader"] div, [data-testid="stFileUploader"] span, [data-testid="stFileUploader"] small {
-        color: #FFFFFF !important;
-    }
-    /* "Browse files" button */
-    [data-testid="stFileUploader"] button {
+    /* --- 4. HERO SECTION (Juniper Square) --- */
+    .hero-card {
         background-color: #FFFFFF !important;
+        border-radius: 12px !important;
+        padding: 2.5rem !important;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.04) !important;
+        border: 1px solid #E2E8F0 !important;
+        margin-bottom: 2rem !important;
+    }
+    .hero-metric-label {
+        color: #64748B !important;
+        font-size: 0.85rem !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+        font-weight: 600 !important;
+    }
+    .hero-metric-value {
         color: #0C2340 !important;
+        font-size: 2.5rem !important;
+        font-weight: 700 !important;
+        font-family: 'Georgia', serif !important;
+    }
+
+    /* --- 5. DATA TABLES (Stripe) --- */
+    [data-testid="stDataFrame"] {
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 8px !important;
+        background-color: #FFFFFF !important;
+    }
+    [data-testid="stDataFrame"] div[role="columnheader"] {
+        background-color: #F8FAFC !important;
+        color: #0C2340 !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        font-size: 0.75rem !important;
+        border-bottom: 1px solid #E2E8F0 !important;
+    }
+    [data-testid="stDataFrame"] div[role="row"] {
+        background-color: #FFFFFF !important;
+        border-bottom: 1px solid #F1F5F9 !important;
+        color: #334155 !important;
+    }
+
+    /* --- 6. INPUT CARDS (TryCactus) --- */
+    div[data-testid="stColumn"] {
+        background-color: #FFFFFF !important;
+        border-radius: 16px !important;
+        padding: 2rem !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.05) !important;
         border: none !important;
     }
+    div[data-testid="stTextInput"] input,
+    div[data-testid="stNumberInput"] input,
+    div[data-testid="stTextArea"] textarea {
+        background-color: #FFFFFF !important;
+        color: #0C2340 !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 8px !important;
+        padding: 10px !important;
+    }
+    div[data-testid="stTextInput"] label,
+    div[data-testid="stNumberInput"] label {
+         color: #0C2340 !important;
+         font-weight: 600 !important;
+    }
 
-    /* PRIMARY BUTTONS (Rocket/Action) */
+    /* --- 7. BUTTONS (Standard Brands) --- */
     .stButton > button {
-        background-color: #0C2340 !important; /* Navy Background */
-        color: #FFFFFF !important; /* White Text */
-        border: 1px solid #FFFFFF !important;
+        background-color: #0C2340 !important;
+        color: #FFFFFF !important; /* Force White Text */
+        border: 1px solid rgba(255,255,255,0.2) !important;
         border-radius: 6px !important;
+        padding: 0.75rem 2rem !important;
         font-weight: 600 !important;
+        width: 100% !important;
+        transition: all 0.2s ease !important;
     }
     .stButton > button:hover {
-        background-color: #4A90E2 !important; /* Blue Hover */
+        background-color: #1E293B !important;
         color: #FFFFFF !important;
-        border-color: #4A90E2 !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+        transform: translateY(-1px) !important;
     }
-    /* Ensure text inside button is white (redundant safety) */
+    /* Rocket Button Label Specificity Fix */
     .stButton > button p {
         color: #FFFFFF !important;
     }
 
-    /* EXPANDERS - Clean White & Navy */
+    /* --- 8. MISC UI --- */
+    [data-testid="stFileUploader"] {
+        background-color: #FFFFFF !important;
+        border-radius: 12px !important;
+        padding: 1rem !important;
+    }
     .streamlit-expanderHeader {
         background-color: #FFFFFF !important;
         color: #0C2340 !important;
-        border: 1px solid #E0E0E0 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -415,19 +494,22 @@ if page == "📝 Project Inputs":
     if "input_name" not in st.session_state:
         st.session_state.input_name = st.session_state.property_data.get('name', '')
 
-    project_address = st.text_input(
-        "Site Address*",
-        key="input_address",
-        placeholder="Enter the property address (e.g., 123 Main St, Nashville, TN 37211)",
-        help="This is the only required field to start analysis"
-    )
+    # Soft Card Wrapper for Inputs
+    input_col, = st.columns(1)
+    with input_col:
+        project_address = st.text_input(
+            "Site Address*",
+            key="input_address",
+            placeholder="Enter the property address (e.g., 123 Main St, Nashville, TN 37211)",
+            help="This is the only required field to start analysis"
+        )
 
-    project_name = st.text_input(
-        "Project Name (Optional)",
-        key="input_name",
-        placeholder="e.g., Nashville Storage Center",
-        help="Optional - will use address if left blank"
-    )
+        project_name = st.text_input(
+            "Project Name (Optional)",
+            key="input_name",
+            placeholder="e.g., Nashville Storage Center",
+            help="Optional - will use address if left blank"
+        )
 
     st.markdown("---")
 
@@ -527,21 +609,9 @@ if page == "📝 Project Inputs":
     cached_data = None
     cached_stats = None
     if project_address:
-        # Debug: Show what we're looking for
-        cache = TractIQCache()
-        normalized_id = cache._generate_market_id(project_address)
-
-        with st.expander("🔍 Debug: Cache Lookup"):
-            st.write(f"**Address entered:** {project_address}")
-            st.write(f"**Normalized ID:** {normalized_id}")
-            st.write(f"**Available markets:** {list(cache.index.get('markets', {}).keys())}")
-
         cached_data = get_cached_tractiq_data(project_address)
         if cached_data:
             cached_stats = get_market_stats(project_address)
-            st.write(f"🎯 Cache hit! Found {len(cached_data)} data sources")
-        else:
-            st.write(f"❌ No cached data found for this address")
 
     # Show cached data status
     if cached_data and cached_stats:
@@ -555,7 +625,6 @@ if page == "📝 Project Inputs":
         if "tractiq_market_id" not in st.session_state or not st.session_state.tractiq_market_id:
             # Use the normalized market_id from the cache
             # The cache generates this by normalizing the address
-            from src.tractiq_cache import TractIQCache
             cache = TractIQCache()
             market_id = cache._generate_market_id(project_address)
             st.session_state.tractiq_market_id = market_id
@@ -703,10 +772,18 @@ if page == "📝 Project Inputs":
 # === PAGE 2: COMMAND CENTER ===
 elif page == "🎯 Command Center":
     st.header("Command Center")
+    # Custom Card Style for Command Center Layout
+
+    # Custom Card Style for Command Center Layout
+
     st.caption(f"📅 {datetime.now().strftime('%A, %B %d, %Y')}")
+
+    # Hero Section (Juniper Square Style)
+    st.markdown('<div class="hero-card">', unsafe_allow_html=True)
     col1, col2 = st.columns([2, 1])
     with col1:
-        st.markdown("### 🌅 Dashboard")
+        st.markdown('<p class="hero-metric-label">Dashboard</p>', unsafe_allow_html=True)
+        # Fetch Data
         @st.cache_data(ttl=60)
         def get_crm_summary():
             if SecretaryAgent is None:
@@ -720,44 +797,52 @@ elif page == "🎯 Command Center":
             except:
                 return 0, 0
         total_contacts, total_props = get_crm_summary()
+
+        # Custom Metric Display
         m1, m2, m3 = st.columns(3)
-        m1.metric("Total Contacts", total_contacts)
-        m2.metric("Properties", total_props)
-        m3.metric("Feasibility Score", f"{st.session_state.scorer.get_total_score()}/100")
-        # === SMART LEAD LISTS ===
-        st.markdown("---")
-        st.markdown("### 📋 Smart Lead Lists")
-        tab1, tab2, tab3 = st.tabs(["✅ Actionable", "🎯 Profile", "🔍 Skip Trace"])
-        with tab1:
-            st.caption("Leads with Phone & Email")
-            if get_actionable_leads is not None:
-                actionable = get_actionable_leads(limit=10)
-                if not actionable.empty:
-                    st.dataframe(actionable, hide_index=True)
-                else:
-                    st.info("No actionable leads")
+        with m1:
+            st.markdown(f'<p class="hero-metric-label">Total Contacts</p><p class="hero-metric-value">{total_contacts}</p>', unsafe_allow_html=True)
+        with m2:
+            st.markdown(f'<p class="hero-metric-label">Properties</p><p class="hero-metric-value">{total_props}</p>', unsafe_allow_html=True)
+        with m3:
+            score = st.session_state.scorer.get_total_score()
+            st.markdown(f'<p class="hero-metric-label">Feasibility Score</p><p class="hero-metric-value">{score}/100</p>', unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True) # End Hero Card
+
+    # === SMART LEAD LISTS ===
+    st.markdown("### 📋 Smart Lead Lists")
+    tab1, tab2, tab3 = st.tabs(["✅ Actionable", "🎯 Profile", "🔍 Skip Trace"])
+    with tab1:
+        st.caption("Leads with Phone & Email")
+        if get_actionable_leads is not None:
+            actionable = get_actionable_leads(limit=10)
+            if not actionable.empty:
+                st.dataframe(actionable, hide_index=True)
             else:
-                st.info("CRM features unavailable (cloud environment)")
-        with tab2:
-            st.caption("Status = New/FollowUp")
-            if get_profile_candidates is not None:
-                candidates = get_profile_candidates(limit=8)
-                if not candidates.empty:
-                    st.dataframe(candidates, hide_index=True)
-                else:
-                    st.info("No profile candidates")
+                st.info("No actionable leads")
+        else:
+            st.info("CRM features unavailable (cloud environment)")
+    with tab2:
+        st.caption("Status = New/FollowUp")
+        if get_profile_candidates is not None:
+            candidates = get_profile_candidates(limit=8)
+            if not candidates.empty:
+                st.dataframe(candidates, hide_index=True)
             else:
-                st.info("CRM features unavailable (cloud environment)")
-        with tab3:
-            st.caption("Missing contact info")
-            if get_skip_trace_list is not None:
-                skip_list = get_skip_trace_list(limit=20)
-                if not skip_list.empty:
-                    st.dataframe(skip_list, hide_index=True)
-                else:
-                    st.info("No skip trace needed")
+                st.info("No profile candidates")
+        else:
+            st.info("CRM features unavailable (cloud environment)")
+    with tab3:
+        st.caption("Missing contact info")
+        if get_skip_trace_list is not None:
+            skip_list = get_skip_trace_list(limit=20)
+            if not skip_list.empty:
+                st.dataframe(skip_list, hide_index=True)
             else:
-                st.info("CRM features unavailable (cloud environment)")
+                st.info("No skip trace needed")
+        else:
+            st.info("CRM features unavailable (cloud environment)")
         # === CONTEXT-AWARE AI ===
         st.markdown("---")
         st.markdown("### 🤖 CRM Analyst AI (Gemini Flash)")
@@ -1066,47 +1151,50 @@ elif page == "💰 7-Year Operating Model":
     st.header("Financial Underwriting & 7-Year Projection")
     # Pull property data from Market Intel if available
     property_address = st.session_state.property_data.get('address', '')
-    st.markdown("### 🏢 Property Inputs")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        property_name = st.text_input("Property Name", value=st.session_state.property_data.get('name', ''),
-            placeholder="e.g. Allspace - Site A")
-        total_sf = st.number_input("Total NRA (SF)", value=105807, step=1000,
-            help="Net Rentable Area")
-    with col2:
-        address_input = st.text_input("Address", value=property_address,
-            placeholder="123 Main St, City, ST")
-        total_units = st.number_input("Total Units", value=684, step=10)
-    with col3:
-        start_date = st.date_input("Projection Start", value=datetime(2026, 1, 31))
-    # Infer starting rate from competitor data if available
-    default_rate = 17.79
-    if st.session_state.all_competitors:
-        # Extract rates from competitors (simplified - could be more sophisticated)
-        comp_rates = [float(c['Rate'].replace('$','').replace(',','')) for c in st.session_state.all_competitors
-            if c.get('Rate') and c['Rate'] != 'Call for Rate' and '$' in str(c['Rate'])]
-        if comp_rates:
-            default_rate = sum(comp_rates) / len(comp_rates) / 100 * 12 # Convert monthly to annual $/SF
-    starting_rate = st.number_input("Starting Rate ($/SF/yr)", value=default_rate, step=0.5,
-        help="Annual rental rate per square foot")
-    st.markdown("---")
-    st.markdown("### 💰 Financial Assumptions")
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        land_cost = st.number_input("Land Cost ($)", value=2500000, step=100000)
-        construction_psf = st.number_input("Construction ($/SF)", value=65, step=5)
-    with col2:
-        stabilized_occ = st.slider("Stabilized Occ %", 80, 95, 90)
-        months_to_stab = st.number_input("Months to Stabilization", value=24, step=6,
-            help="How long to reach stabilized occupancy")
-    with col3:
-        rate_growth = st.slider("Annual Rate Growth %", 2.0, 6.0, 4.0, 0.5) / 100
-        ltv = st.slider("LTV %", 50, 80, 70) / 100
-    with col4:
-        interest_rate = st.slider("Interest Rate %", 4.0, 8.0, 6.25, 0.25) / 100
-        loan_term = st.number_input("Loan Term (yrs)", value=30, step=5)
-    total_cost = land_cost + (construction_psf * total_sf)
-    loan_amount = total_cost * ltv
+    # Soft Card for Inputs
+    input_card, = st.columns(1)
+    with input_card:
+        st.markdown("### 🏢 Property Inputs")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            property_name = st.text_input("Property Name", value=st.session_state.property_data.get('name', ''),
+                placeholder="e.g. Allspace - Site A")
+            total_sf = st.number_input("Total NRA (SF)", value=105807, step=1000,
+                help="Net Rentable Area")
+        with col2:
+            address_input = st.text_input("Address", value=property_address,
+                placeholder="123 Main St, City, ST")
+            total_units = st.number_input("Total Units", value=684, step=10)
+        with col3:
+            start_date = st.date_input("Projection Start", value=datetime(2026, 1, 31))
+        # Infer starting rate from competitor data if available
+        default_rate = 17.79
+        if st.session_state.all_competitors:
+            # Extract rates from competitors (simplified - could be more sophisticated)
+            comp_rates = [float(c['Rate'].replace('$','').replace(',','')) for c in st.session_state.all_competitors
+                if c.get('Rate') and c['Rate'] != 'Call for Rate' and '$' in str(c['Rate'])]
+            if comp_rates:
+                default_rate = sum(comp_rates) / len(comp_rates) / 100 * 12 # Convert monthly to annual $/SF
+        starting_rate = st.number_input("Starting Rate ($/SF/yr)", value=default_rate, step=0.5,
+            help="Annual rental rate per square foot")
+        st.markdown("---")
+        st.markdown("### 💰 Financial Assumptions")
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            land_cost = st.number_input("Land Cost ($)", value=2500000, step=100000)
+            construction_psf = st.number_input("Construction ($/SF)", value=65, step=5)
+        with col2:
+            stabilized_occ = st.slider("Stabilized Occ %", 80, 95, 90)
+            months_to_stab = st.number_input("Months to Stabilization", value=24, step=6,
+                help="How long to reach stabilized occupancy")
+        with col3:
+            rate_growth = st.slider("Annual Rate Growth %", 2.0, 6.0, 4.0, 0.5) / 100
+            ltv = st.slider("LTV %", 50, 80, 70) / 100
+        with col4:
+            interest_rate = st.slider("Interest Rate %", 4.0, 8.0, 6.25, 0.25) / 100
+            loan_term = st.number_input("Loan Term (yrs)", value=30, step=5)
+        total_cost = land_cost + (construction_psf * total_sf)
+        loan_amount = total_cost * ltv
     st.markdown("---")
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Development Cost", f"${total_cost:,.0f}")
@@ -1165,11 +1253,14 @@ elif page == "💰 7-Year Operating Model":
                     'total_units': total_units
                 }
                 # Render modern 7-year projection display
-                render_7year_projection(
-                    annual_summary=annual_summary,
-                    monthly_projection=projection_df,
-                    property_info=property_info
-                )
+                # Chart Container (Soft Card)
+                chart_col, = st.columns(1)
+                with chart_col:
+                    render_7year_projection(
+                        annual_summary=annual_summary,
+                        monthly_projection=projection_df,
+                        property_info=property_info
+                    )
             except Exception as e:
                 st.error(f"Error generating projection: {str(e)}")
                 import traceback
