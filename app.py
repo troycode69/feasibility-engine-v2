@@ -801,7 +801,7 @@ elif page == "📊 Market Intel":
 
     # Display 100-point site score
     st.markdown("### 🎯 Site Feasibility Score")
-    if hasattr(results, 'site_scorecard'):
+    if hasattr(results, 'site_scorecard') and results.site_scorecard:
         scorecard = results.site_scorecard
 
         # Big score display
@@ -820,40 +820,50 @@ elif page == "📊 Market Intel":
 
         # Category breakdown
         st.markdown("### 📊 Score Breakdown")
-        col1, col2, col3, col4, col5 = st.columns(5)
 
-        with col1:
-            st.metric("Demographics", f"{scorecard.demographics.total_score}/25",
-                     delta=f"{scorecard.demographics.tier}")
-        with col2:
-            st.metric("Supply/Demand", f"{scorecard.supply_demand.total_score}/25",
-                     delta=f"{scorecard.supply_demand.tier}")
-        with col3:
-            st.metric("Site Attributes", f"{scorecard.site_attributes.total_score}/25",
-                     delta=f"{scorecard.site_attributes.tier}")
-        with col4:
-            st.metric("Competitive", f"{scorecard.competitive_positioning.total_score}/15",
-                     delta=f"{scorecard.competitive_positioning.tier}")
-        with col5:
-            st.metric("Economic", f"{scorecard.economic_market.total_score}/10",
-                     delta=f"{scorecard.economic_market.tier}")
+        try:
+            col1, col2, col3, col4, col5 = st.columns(5)
+
+            with col1:
+                st.metric("Demographics", f"{scorecard.demographics.total_score}/25",
+                         delta=f"{scorecard.demographics.tier}")
+            with col2:
+                st.metric("Supply/Demand", f"{scorecard.supply_demand.total_score}/25",
+                         delta=f"{scorecard.supply_demand.tier}")
+            with col3:
+                st.metric("Site Attributes", f"{scorecard.site_attributes.total_score}/25",
+                         delta=f"{scorecard.site_attributes.tier}")
+            with col4:
+                st.metric("Competitive", f"{scorecard.competitive_positioning.total_score}/15",
+                         delta=f"{scorecard.competitive_positioning.tier}")
+            with col5:
+                st.metric("Economic", f"{scorecard.economic_market.total_score}/10",
+                         delta=f"{scorecard.economic_market.tier}")
+        except AttributeError as e:
+            st.error(f"⚠️ Score breakdown display error: {str(e)}")
+            st.info("Some score category data may be missing. The analysis may need to be re-run.")
 
         # Detailed breakdown in expanders
-        with st.expander("👥 Demographics Details"):
-            demo = scorecard.demographics
-            st.write(f"**Population (3mi):** {demo.population_3mi:,} - Score: {demo.population_3mi_score}/5 ({demo.population_3mi_tier})")
-            st.write(f"**Growth Rate:** {demo.growth_rate:.2f}% - Score: {demo.growth_rate_score}/5 ({demo.growth_rate_tier})")
-            st.write(f"**Median Income:** ${demo.median_income:,} - Score: {demo.median_income_score}/5 ({demo.median_income_tier})")
-            st.write(f"**Renter %:** {demo.renter_occupied_pct:.1f}% - Score: {demo.renter_occupied_pct_score}/5 ({demo.renter_occupied_pct_tier})")
-            st.write(f"**Median Age:** {demo.median_age:.1f} - Score: {demo.median_age_score}/5 ({demo.median_age_tier})")
+        try:
+            with st.expander("👥 Demographics Details"):
+                demo = scorecard.demographics
+                st.write(f"**Population (3mi):** {demo.population_3mi:,} - Score: {demo.population_3mi_score}/5 ({demo.population_3mi_tier})")
+                st.write(f"**Growth Rate:** {demo.growth_rate:.2f}% - Score: {demo.growth_rate_score}/5 ({demo.growth_rate_tier})")
+                st.write(f"**Median Income:** ${demo.median_income:,} - Score: {demo.median_income_score}/5 ({demo.median_income_tier})")
+                st.write(f"**Renter %:** {demo.renter_occupied_pct:.1f}% - Score: {demo.renter_occupied_pct_score}/5 ({demo.renter_occupied_pct_tier})")
+                st.write(f"**Median Age:** {demo.median_age:.1f} - Score: {demo.median_age_score}/5 ({demo.median_age_tier})")
 
-        with st.expander("📦 Supply/Demand Details"):
-            supply = scorecard.supply_demand
-            st.write(f"**SF per Capita (3mi):** {supply.sf_per_capita:.2f} - Score: {supply.sf_per_capita_score}/5 ({supply.sf_per_capita_tier})")
-            st.write(f"**Avg Occupancy:** {supply.existing_occupancy_avg:.1f}% - Score: {supply.existing_occupancy_avg_score}/5 ({supply.existing_occupancy_avg_tier})")
-            st.write(f"**Distance to Nearest:** {supply.distance_to_nearest:.2f} mi - Score: {supply.distance_to_nearest_score}/5 ({supply.distance_to_nearest_tier})")
-            st.write(f"**Rate Trend (12mo):** {supply.market_rate_trend:+.1f}% - Score: {supply.market_rate_trend_score}/5 ({supply.market_rate_trend_tier})")
-            st.write(f"**Dev Pipeline:** {supply.development_pipeline} facilities - Score: {supply.development_pipeline_score}/5 ({supply.development_pipeline_tier})")
+            with st.expander("📦 Supply/Demand Details"):
+                supply = scorecard.supply_demand
+                st.write(f"**SF per Capita (3mi):** {supply.sf_per_capita:.2f} - Score: {supply.sf_per_capita_score}/5 ({supply.sf_per_capita_tier})")
+                st.write(f"**Avg Occupancy:** {supply.existing_occupancy_avg:.1f}% - Score: {supply.existing_occupancy_avg_score}/5 ({supply.existing_occupancy_avg_tier})")
+                st.write(f"**Distance to Nearest:** {supply.distance_to_nearest:.2f} mi - Score: {supply.distance_to_nearest_score}/5 ({supply.distance_to_nearest_tier})")
+                st.write(f"**Rate Trend (12mo):** {supply.market_rate_trend:+.1f}% - Score: {supply.market_rate_trend_score}/5 ({supply.market_rate_trend_tier})")
+                st.write(f"**Dev Pipeline:** {supply.development_pipeline} facilities - Score: {supply.development_pipeline_score}/5 ({supply.development_pipeline_tier})")
+        except AttributeError:
+            pass
+    else:
+        st.warning("⚠️ Site scorecard data not available")
 
     st.markdown("---")
 
