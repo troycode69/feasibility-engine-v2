@@ -888,22 +888,91 @@ elif page == "📊 Market Intel":
 
     st.markdown("---")
 
-    # MARKET RATES BY UNIT SIZE (NEW REQUIREMENT)
+    # MARKET RATES BY UNIT SIZE (MERGED DATA)
     st.markdown("### 💰 Market Rates by Unit Size")
-    st.caption("Competitive rate analysis broken down by unit type and climate control")
+    st.caption("Competitive rate analysis from TractiQ uploads + scraped competitor data")
 
-    # For now, show a placeholder - will implement full rate analysis
-    st.info("🚧 Rate data integration coming soon - will show rates by unit size (5x5, 10x10, etc.) and climate vs non-climate")
+    try:
+        from src.rate_merger import merge_competitor_rates
+        from src.tractiq_cache import get_cached_tractiq_data
 
-    # Placeholder table structure
-    rate_data = {
-        "Unit Size": ["5x5", "5x10", "10x10", "10x15", "10x20", "10x30"],
-        "Climate Controlled": ["$75-95", "$95-125", "$120-160", "$150-200", "$180-240", "$250-350"],
-        "Non-Climate": ["$55-75", "$70-95", "$90-120", "$115-155", "$140-190", "$190-280"],
-        "Market Average": ["$85", "$110", "$140", "$175", "$210", "$315"]
-    }
-    st.table(pd.DataFrame(rate_data))
-    st.caption("📊 **Source:** TractiQ cache + Google Maps scraper data")
+        # Get TractiQ data from cache if available
+        tractiq_data = {}
+        if st.session_state.get("tractiq_market_id"):
+            project_address = st.session_state.property_data.get('address', '')
+            if project_address:
+                tractiq_data = get_cached_tractiq_data(project_address)
+
+        # Get scraper competitors
+        scraper_competitors = results.scraper_competitors if hasattr(results, 'scraper_competitors') else []
+
+        # Merge the data
+        merged_rates = merge_competitor_rates(tractiq_data, scraper_competitors)
+
+        # Display summary
+        summary = merged_rates['summary']
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Total Competitors", summary['total_competitors'])
+        col2.metric("TractiQ Sources", summary['tractiq_count'])
+        col3.metric("Scraped Sources", summary['scraper_count'])
+
+        # Build rate table
+        by_unit_size = merged_rates['by_unit_size']
+        table_data = {
+            "Unit Size": [],
+            "Climate Min-Max": [],
+            "Climate Avg": [],
+            "Non-Climate Min-Max": [],
+            "Non-Climate Avg": [],
+            "Sample Size": []
+        }
+
+        for size in summary['unit_sizes']:
+            climate_data = by_unit_size[size]['climate']
+            non_climate_data = by_unit_size[size]['non_climate']
+
+            table_data["Unit Size"].append(size)
+
+            # Climate controlled
+            if climate_data['count'] > 0:
+                table_data["Climate Min-Max"].append(f"${climate_data['min']:.0f}-${climate_data['max']:.0f}")
+                table_data["Climate Avg"].append(f"${climate_data['avg']:.0f}")
+            else:
+                table_data["Climate Min-Max"].append("No data")
+                table_data["Climate Avg"].append("-")
+
+            # Non-climate
+            if non_climate_data['count'] > 0:
+                table_data["Non-Climate Min-Max"].append(f"${non_climate_data['min']:.0f}-${non_climate_data['max']:.0f}")
+                table_data["Non-Climate Avg"].append(f"${non_climate_data['avg']:.0f}")
+            else:
+                table_data["Non-Climate Min-Max"].append("No data")
+                table_data["Non-Climate Avg"].append("-")
+
+            # Sample size
+            total_samples = climate_data['count'] + non_climate_data['count']
+            table_data["Sample Size"].append(f"{total_samples} rates")
+
+        # Display table
+        st.table(pd.DataFrame(table_data))
+
+        # Overall rate range
+        if summary['rate_range']['min'] and summary['rate_range']['max']:
+            st.caption(f"📊 **Overall Rate Range:** ${summary['rate_range']['min']:.0f} - ${summary['rate_range']['max']:.0f} | **Sources:** {summary['tractiq_count']} TractiQ + {summary['scraper_count']} Scraped")
+        else:
+            st.caption("📊 **Source:** TractiQ cache + Google Maps scraper data")
+
+    except Exception as e:
+        st.warning(f"⚠️ Could not merge rate data: {str(e)}")
+        st.info("Showing placeholder rate data")
+
+        # Fallback placeholder
+        rate_data = {
+            "Unit Size": ["5x5", "5x10", "10x10", "10x15", "10x20", "10x30"],
+            "Climate Min-Max": ["$75-95", "$95-125", "$120-160", "$150-200", "$180-240", "$250-350"],
+            "Non-Climate Min-Max": ["$55-75", "$70-95", "$90-120", "$115-155", "$140-190", "$190-280"],
+        }
+        st.table(pd.DataFrame(rate_data))
 
     st.markdown("---")
 
