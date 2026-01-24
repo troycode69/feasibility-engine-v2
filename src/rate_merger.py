@@ -119,22 +119,29 @@ def merge_competitor_rates(tractiq_data: Dict, scraper_competitors: List[Dict]) 
             for comp in competitors:
                 name = comp.get('name', '').lower().strip()
 
-                # Skip if duplicate
-                if name in seen_names:
+                # Skip if duplicate or no name
+                if not name or name in seen_names:
                     continue
 
                 seen_names.add(name)
                 tractiq_count += 1
 
-                # Extract rates by unit size
+                # Extract rates by unit size - check all keys
                 for key, value in comp.items():
-                    if key.startswith('rate_'):
+                    # Look for rate keys (rate_5x5, rate_10x10, etc.) or direct size keys (5x5, 10x10)
+                    if key.startswith('rate_') or 'x' in key.lower():
                         unit_size = extract_unit_size(key)
                         rate = parse_rate(value)
 
                         if unit_size in standard_sizes and rate:
-                            # Determine climate control (TractiQ data might have this info)
-                            climate_type = "climate" if comp.get(f'{key}_climate', False) else "non_climate"
+                            # Check for climate control indicator in key or separate field
+                            is_climate = (
+                                'climate' in key.lower() or
+                                'cc' in key.lower() or
+                                comp.get(f'{key}_climate', False) or
+                                comp.get('climate_control', False)
+                            )
+                            climate_type = "climate" if is_climate else "non_climate"
                             rates_by_size[unit_size][climate_type].append(rate)
 
                 # Add to all competitors

@@ -520,7 +520,34 @@ if page == "📝 Project Inputs":
 
     # TractiQ Data Upload
     st.markdown("### 📁 TractiQ Market Data (Optional)")
-    st.info("Upload TractiQ competitor reports (PDF, CSV, Excel) to enhance market analysis with detailed rate data by unit size and climate control.")
+
+    # Check if we have cached data for this address
+    from src.tractiq_cache import get_cached_tractiq_data, get_market_stats
+
+    cached_data = None
+    cached_stats = None
+    if project_address:
+        cached_data = get_cached_tractiq_data(project_address)
+        if cached_data:
+            cached_stats = get_market_stats(project_address)
+
+    # Show cached data status
+    if cached_data and cached_stats:
+        st.success(f"✅ Found cached TractiQ data for this address!")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Cached Competitors", cached_stats.get('total_competitors', 0))
+        col2.metric("Data Sources", cached_stats.get('data_sources', 0))
+        col3.metric("Last Updated", cached_stats.get('last_updated', 'Unknown')[:10] if cached_stats.get('last_updated') else 'Unknown')
+
+        # Auto-set the tractiq_market_id from cached data
+        if "tractiq_market_id" not in st.session_state or not st.session_state.tractiq_market_id:
+            # Generate same market ID as when uploading
+            market_id = f"tractiq_{hash(project_address) % 100000000}"
+            st.session_state.tractiq_market_id = market_id
+
+        st.info("You can upload additional TractiQ files below to add to the cached data, or proceed with analysis using existing data.")
+    else:
+        st.info("Upload TractiQ competitor reports (PDF, CSV, Excel) to enhance market analysis with detailed rate data by unit size and climate control.")
 
     uploaded_files = st.file_uploader(
         "Drop TractiQ Reports Here",
@@ -905,6 +932,21 @@ elif page == "📊 Market Intel":
 
         # Get scraper competitors
         scraper_competitors = results.scraper_competitors if hasattr(results, 'scraper_competitors') else []
+
+        # Debug: Show raw data structure
+        with st.expander("🔍 Debug: Data Sources"):
+            st.write(f"**TractiQ data keys:** {list(tractiq_data.keys()) if tractiq_data else 'None'}")
+            if tractiq_data:
+                for key, val in tractiq_data.items():
+                    st.write(f"**{key}:**")
+                    comps = val.get('competitors', [])
+                    st.write(f"  - Competitors count: {len(comps)}")
+                    if comps:
+                        st.write(f"  - First competitor keys: {list(comps[0].keys())}")
+                        st.write(f"  - First competitor sample: {comps[0]}")
+            st.write(f"**Scraper competitors count:** {len(scraper_competitors)}")
+            if scraper_competitors:
+                st.write(f"**First scraper competitor:** {scraper_competitors[0]}")
 
         # Merge the data
         merged_rates = merge_competitor_rates(tractiq_data, scraper_competitors)
