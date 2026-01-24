@@ -804,6 +804,15 @@ elif page == "📊 Market Intel":
     if hasattr(results, 'site_scorecard') and results.site_scorecard:
         scorecard = results.site_scorecard
 
+        # Debug info
+        with st.expander("🔍 Debug: Scorecard Structure"):
+            st.write(f"**Scorecard type:** {type(scorecard).__name__}")
+            st.write(f"**Total score:** {scorecard.total_score}")
+            st.write(f"**Has demographics attr:** {hasattr(scorecard, 'demographics')}")
+            if hasattr(scorecard, 'demographics'):
+                st.write(f"**Demographics type:** {type(scorecard.demographics).__name__}")
+                st.write(f"**Demographics total_score attr:** {hasattr(scorecard.demographics, 'total_score')}")
+
         # Big score display
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
@@ -842,6 +851,9 @@ elif page == "📊 Market Intel":
         except AttributeError as e:
             st.error(f"⚠️ Score breakdown display error: {str(e)}")
             st.info("Some score category data may be missing. The analysis may need to be re-run.")
+            import traceback
+            with st.expander("🔍 Full Error Details"):
+                st.code(traceback.format_exc())
 
         # Detailed breakdown in expanders
         try:
