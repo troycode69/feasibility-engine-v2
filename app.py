@@ -1028,21 +1028,6 @@ elif page == "📊 Market Intel":
         # Get scraper competitors
         scraper_competitors = results.scraper_competitors if hasattr(results, 'scraper_competitors') else []
 
-        # Debug: Show raw data structure
-        with st.expander("🔍 Debug: Data Sources"):
-            st.write(f"**TractiQ data keys:** {list(tractiq_data.keys()) if tractiq_data else 'None'}")
-            if tractiq_data:
-                for key, val in tractiq_data.items():
-                    st.write(f"**{key}:**")
-                    comps = val.get('competitors', [])
-                    st.write(f"  - Competitors count: {len(comps)}")
-                    if comps:
-                        st.write(f"  - First competitor keys: {list(comps[0].keys())}")
-                        st.write(f"  - First competitor sample: {comps[0]}")
-            st.write(f"**Scraper competitors count:** {len(scraper_competitors)}")
-            if scraper_competitors:
-                st.write(f"**First scraper competitor:** {scraper_competitors[0]}")
-
         # Merge the data
         merged_rates = merge_competitor_rates(tractiq_data, scraper_competitors)
 
