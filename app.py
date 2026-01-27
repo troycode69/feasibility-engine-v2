@@ -251,10 +251,15 @@ st.markdown("""
 <style>
     /* --- 1. GLOBAL RESET & TYPOGRAPHY --- */
     .stApp {
-        background-color: #F4F6F8 !important; /* Light Gray Background */
-        color: #0C2340 !important;
+        background-color: #FFFFFF !important; /* White Background - easier to read */
+        color: #1A1A1A !important; /* Dark text for readability */
         font-family: 'Inter', sans-serif !important;
         padding-top: 80px !important; /* Offset for Fixed SaaS Header */
+    }
+
+    /* Force all text to be dark */
+    .stApp p, .stApp span, .stApp div, .stApp label, .stApp h1, .stApp h2, .stApp h3 {
+        color: #1A1A1A !important;
     }
 
     /* --- 2. FIXED SAAS HEADER --- */
@@ -367,7 +372,7 @@ st.markdown("""
     }
     [data-testid="stDataFrame"] div[role="columnheader"] {
         background-color: #F8FAFC !important;
-        color: #0C2340 !important;
+        color: #1A1A1A !important; /* Dark header text */
         font-weight: 600 !important;
         text-transform: uppercase !important;
         font-size: 0.75rem !important;
@@ -376,7 +381,7 @@ st.markdown("""
     [data-testid="stDataFrame"] div[role="row"] {
         background-color: #FFFFFF !important;
         border-bottom: 1px solid #F1F5F9 !important;
-        color: #334155 !important;
+        color: #1A1A1A !important; /* Dark row text */
     }
 
     /* --- 6. INPUT CARDS (TryCactus) --- */
@@ -391,14 +396,15 @@ st.markdown("""
     div[data-testid="stNumberInput"] input,
     div[data-testid="stTextArea"] textarea {
         background-color: #FFFFFF !important;
-        color: #0C2340 !important;
-        border: 1px solid #E2E8F0 !important;
+        color: #1A1A1A !important; /* Dark text in inputs */
+        border: 1px solid #D1D5DB !important;
         border-radius: 8px !important;
         padding: 10px !important;
     }
     div[data-testid="stTextInput"] label,
-    div[data-testid="stNumberInput"] label {
-         color: #0C2340 !important;
+    div[data-testid="stNumberInput"] label,
+    div[data-testid="stMarkdown"] label {
+         color: #1A1A1A !important; /* Dark labels */
          font-weight: 600 !important;
     }
 
