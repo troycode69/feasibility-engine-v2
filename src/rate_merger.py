@@ -21,8 +21,10 @@ def extract_unit_size(size_str: str) -> Optional[str]:
     if not size_str:
         return None
 
-    # Remove common prefixes
+    # Remove common prefixes and suffixes
     size_str = size_str.replace('rate_', '').replace('Rate_', '')
+    size_str = size_str.replace('_cc', '').replace('_CC', '')  # Remove climate control suffix
+    size_str = size_str.replace('_ncc', '').replace('_NCC', '')  # Remove non-climate suffix
 
     # Normalize spacing and case
     size_str = size_str.lower().replace(' ', '').strip()
