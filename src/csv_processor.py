@@ -94,9 +94,11 @@ def extract_competitors_from_csv(rows: List[Dict], headers: Dict) -> List[Dict]:
     address_keys = ['address', 'street address', 'location', 'street', 'addr']
     units_keys = ['units', 'unit count', 'total units', '# units', 'number of units']
     occupancy_keys = ['occupancy', 'physical occupancy', 'occ %', 'occupancy %', 'occupied %', 'aggregate']
-    rate_keys = ['10x10 cc', '10x10 climate', '10x10 rate', 'street rate', 'current rate', 'cc - 10x10', '10 x 10']
     nrsf_keys = ['nrsf', 'rentable sf', 'total sf', 'square feet', 'square ft', 'sq ft']
     distance_keys = ['distance', 'distance (mi)', 'miles', 'dist']
+
+    # Standard unit sizes to look for
+    standard_sizes = ['5x5', '5x10', '10x10', '10x15', '10x20', '10x30']
 
     # Debug: Print available columns
     print(f"CSV Columns found: {list(headers.keys())[:10]}")  # Print first 10 column names
@@ -132,14 +134,51 @@ def extract_competitors_from_csv(rows: List[Dict], headers: Dict) -> List[Dict]:
             except:
                 pass
 
-        # Extract 10x10 rate
-        rate = find_value_in_row(row, headers, rate_keys)
-        if rate:
-            try:
-                rate_clean = str(rate).replace('$', '').replace(',', '').strip()
-                comp["rate_10x10"] = float(rate_clean)
-            except:
-                pass
+        # Extract rates for ALL standard unit sizes (5x5, 5x10, 10x10, 10x15, 10x20, 10x30)
+        for size in standard_sizes:
+            # Look for columns matching this size with various formats
+            # Examples: "5x5 CC", "5 x 5", "5x5 Climate", "CC - 5x5", "5x5 rate"
+            size_patterns = [
+                size,  # Exact match: "5x5"
+                size.replace('x', ' x '),  # With spaces: "5 x 5"
+                f'{size} cc',  # Climate controlled: "5x5 cc"
+                f'{size} climate',  # "5x5 climate"
+                f'cc - {size}',  # "cc - 5x5"
+                f'{size} rate',  # "5x5 rate"
+                f'rate - {size}',  # "rate - 5x5"
+                f'{size} ncc',  # Non-climate: "5x5 ncc"
+                f'ncc - {size}',  # "ncc - 5x5"
+            ]
+
+            # Try to find rate for this size
+            rate_value = None
+            is_climate = False
+
+            # Search through all column headers
+            for col_key, col_name in headers.items():
+                col_lower = col_key.lower()
+                size_normalized = size.replace('x', '')
+
+                # Check if this column matches the size
+                if any(pattern in col_lower for pattern in [size, size.replace('x', ' x '), size.replace('x', '')]):
+                    # Found a column for this size - extract rate
+                    value = row.get(col_name, '')
+                    if value and str(value).strip() and str(value).strip().lower() not in ['n/a', 'na', '-', '']:
+                        try:
+                            rate_clean = str(value).replace('$', '').replace(',', '').strip()
+                            rate_float = float(rate_clean)
+                            if 10 <= rate_float <= 1000:  # Reasonable range for monthly rates
+                                rate_value = rate_float
+                                # Check if this is climate controlled
+                                is_climate = any(cc in col_lower for cc in ['cc', 'climate', 'climate controlled'])
+                                break
+                        except:
+                            pass
+
+            # Store the rate if found
+            if rate_value:
+                rate_key = f"rate_{size}" if not is_climate else f"rate_{size}_cc"
+                comp[rate_key] = rate_value
 
         # Extract NRSF
         nrsf = find_value_in_row(row, headers, nrsf_keys)
