@@ -620,6 +620,22 @@ if page == "📝 Project Inputs":
         if cached_data:
             # Calculate stats from filtered data
             total_competitors = sum(len(pdf.get('competitors', [])) for pdf in cached_data.values())
+
+            # DEBUG: Check what's in the data
+            st.write("DEBUG - Raw competitor count:", total_competitors)
+            for pdf_name, pdf_data in cached_data.items():
+                comps = pdf_data.get('competitors', [])
+                st.write(f"DEBUG - {pdf_name}: {len(comps)} competitors")
+                if comps and len(comps) > 0:
+                    sample = comps[0]
+                    st.write(f"DEBUG - Sample competitor keys: {list(sample.keys())}")
+                    st.write(f"DEBUG - Sample distance_miles: {sample.get('distance_miles', 'MISSING')}")
+                    rate_keys = [k for k in sample.keys() if 'rate' in k.lower()]
+                    st.write(f"DEBUG - Sample rate keys: {rate_keys}")
+                    if rate_keys:
+                        st.write(f"DEBUG - Sample rate value: {sample.get(rate_keys[0])}")
+                    break
+
             cached_stats = {
                 'total_competitors': total_competitors,
                 'data_sources': len(cached_data),
