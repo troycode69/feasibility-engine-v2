@@ -362,23 +362,31 @@ def get_cached_tractiq_data(market_name: str, site_address: Optional[str] = None
             filtered_competitors = []
 
             for comp in competitors:
-                comp_address = comp.get('address')
-                if not comp_address:
-                    continue
+                # First, check if competitor already has distance_miles from CSV
+                existing_distance = comp.get('distance_miles', comp.get('distance'))
 
-                # Get competitor coordinates
-                comp_coords = get_coordinates(comp_address)
-                if not comp_coords:
-                    continue
+                if existing_distance is not None:
+                    # Use existing distance from CSV/cache
+                    try:
+                        distance = float(existing_distance)
+                    except (ValueError, TypeError):
+                        distance = None
+                else:
+                    # Fallback: Calculate distance via geocoding
+                    comp_address = comp.get('address')
+                    if not comp_address:
+                        continue
 
-                comp_lat, comp_lon = comp_coords
+                    comp_coords = get_coordinates(comp_address)
+                    if not comp_coords:
+                        continue
 
-                # Calculate distance
-                distance = calculate_distance(site_lat, site_lon, comp_lat, comp_lon)
+                    comp_lat, comp_lon = comp_coords
+                    distance = calculate_distance(site_lat, site_lon, comp_lat, comp_lon)
+                    comp['distance_miles'] = round(distance, 2)
 
                 # Include if within radius
-                if distance <= radius_miles:
-                    comp['distance_miles'] = round(distance, 2)
+                if distance is not None and distance <= radius_miles:
                     filtered_competitors.append(comp)
 
             # Update PDF data with filtered competitors

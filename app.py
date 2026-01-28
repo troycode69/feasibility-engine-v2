@@ -632,9 +632,10 @@ if page == "📝 Project Inputs":
 
     # Show cached data status
     if cached_data and cached_stats:
-        st.success(f"✅ Found cached TractiQ data within 5 miles of this address!")
+        comp_count = cached_stats.get('total_competitors', 0)
+        st.success(f"✅ Found {comp_count} competitors within 5 miles!")
         col1, col2, col3 = st.columns(3)
-        col1.metric("Cached Competitors", cached_stats.get('total_competitors', 0))
+        col1.metric("Nearby Competitors", comp_count)
         col2.metric("Data Sources", cached_stats.get('data_sources', 0))
         col3.metric("Last Updated", cached_stats.get('last_updated', 'Unknown')[:10] if cached_stats.get('last_updated') else 'Unknown')
 
