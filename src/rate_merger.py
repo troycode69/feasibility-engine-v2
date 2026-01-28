@@ -133,11 +133,6 @@ def merge_competitor_rates(tractiq_data: Dict, scraper_competitors: List[Dict]) 
                 if not name or name in seen_names:
                     continue
 
-                # Filter by distance (5 miles max)
-                distance = comp.get('distance_miles', comp.get('distance', 0))
-                if distance > 5.0:
-                    continue
-
                 seen_names.add(name)
                 tractiq_count += 1
 
