@@ -308,10 +308,90 @@ def cache_tractiq_data(market_name: str, tractiq_data: Dict) -> str:
     return cache.store_market_data(market_name, pdf_extractions, overwrite=False)
 
 
-def get_cached_tractiq_data(market_name: str) -> Dict:
-    """Retrieve cached TractIQ data for a market"""
+def get_cached_tractiq_data(market_name: str, site_address: Optional[str] = None, radius_miles: float = 5.0) -> Dict:
+    """
+    Retrieve cached TractIQ data for a market, optionally filtered by distance from a site address.
+
+    Args:
+        market_name: Market identifier for cache lookup
+        site_address: Optional site address to filter competitors by distance
+        radius_miles: Maximum distance in miles from site_address (default 5.0)
+
+    Returns:
+        Dictionary of cached PDF data with competitors filtered by distance if site_address provided
+    """
     cache = TractIQCache()
-    return cache.get_cached_data_for_report(market_name)
+    cached_data = cache.get_cached_data_for_report(market_name)
+
+    # If no site address provided or no cached data, return as-is
+    if not site_address or not cached_data:
+        return cached_data
+
+    # Filter competitors by distance from site_address
+    try:
+        from src.market_analysis import get_coordinates
+        import math
+
+        # Get coordinates for the current site
+        site_coords = get_coordinates(site_address)
+        if not site_coords:
+            # Can't filter without site coordinates, return all data
+            return cached_data
+
+        site_lat, site_lon = site_coords
+
+        # Helper function to calculate distance
+        def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+            """Calculate distance in miles using Haversine formula"""
+            R = 3959  # Earth's radius in miles
+
+            lat1_rad = math.radians(lat1)
+            lat2_rad = math.radians(lat2)
+            dlat = math.radians(lat2 - lat1)
+            dlon = math.radians(lon2 - lon1)
+
+            a = math.sin(dlat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon/2)**2
+            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+
+            return R * c
+
+        # Filter competitors in each PDF source
+        filtered_data = {}
+        for pdf_name, pdf_data in cached_data.items():
+            competitors = pdf_data.get('competitors', [])
+            filtered_competitors = []
+
+            for comp in competitors:
+                comp_address = comp.get('address')
+                if not comp_address:
+                    continue
+
+                # Get competitor coordinates
+                comp_coords = get_coordinates(comp_address)
+                if not comp_coords:
+                    continue
+
+                comp_lat, comp_lon = comp_coords
+
+                # Calculate distance
+                distance = calculate_distance(site_lat, site_lon, comp_lat, comp_lon)
+
+                # Include if within radius
+                if distance <= radius_miles:
+                    comp['distance_miles'] = round(distance, 2)
+                    filtered_competitors.append(comp)
+
+            # Update PDF data with filtered competitors
+            filtered_pdf_data = pdf_data.copy()
+            filtered_pdf_data['competitors'] = filtered_competitors
+            filtered_data[pdf_name] = filtered_pdf_data
+
+        return filtered_data
+
+    except Exception as e:
+        print(f"Error filtering cached data by distance: {e}")
+        # On error, return unfiltered data
+        return cached_data
 
 
 def list_cached_markets() -> List[Dict]:

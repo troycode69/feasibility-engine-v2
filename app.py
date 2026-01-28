@@ -615,13 +615,24 @@ if page == "📝 Project Inputs":
     cached_data = None
     cached_stats = None
     if project_address:
-        cached_data = get_cached_tractiq_data(project_address)
+        # Get cached data filtered to 5-mile radius of current site
+        cached_data = get_cached_tractiq_data(project_address, site_address=project_address, radius_miles=5.0)
         if cached_data:
-            cached_stats = get_market_stats(project_address)
+            # Calculate stats from filtered data
+            total_competitors = sum(len(pdf.get('competitors', [])) for pdf in cached_data.values())
+            cached_stats = {
+                'total_competitors': total_competitors,
+                'data_sources': len(cached_data),
+                'last_updated': max(
+                    (pdf.get('extraction_date', pdf.get('cached_date', ''))
+                     for pdf in cached_data.values()),
+                    default=''
+                )
+            }
 
     # Show cached data status
     if cached_data and cached_stats:
-        st.success(f"✅ Found cached TractiQ data for this address!")
+        st.success(f"✅ Found cached TractiQ data within 5 miles of this address!")
         col1, col2, col3 = st.columns(3)
         col1.metric("Cached Competitors", cached_stats.get('total_competitors', 0))
         col2.metric("Data Sources", cached_stats.get('data_sources', 0))
@@ -1024,12 +1035,17 @@ elif page == "📊 Market Intel":
         from src.rate_merger import merge_competitor_rates
         from src.tractiq_cache import get_cached_tractiq_data
 
-        # Get TractiQ data from cache if available
+        # Get TractiQ data from cache if available, filtered by distance from current site
         tractiq_data = {}
         if st.session_state.get("tractiq_market_id"):
             project_address = st.session_state.property_data.get('address', '')
             if project_address:
-                tractiq_data = get_cached_tractiq_data(project_address)
+                # Get cached data filtered to 5-mile radius of current site
+                tractiq_data = get_cached_tractiq_data(
+                    st.session_state.tractiq_market_id,
+                    site_address=project_address,
+                    radius_miles=5.0
+                )
 
         # Get scraper competitors
         scraper_competitors = results.scraper_competitors if hasattr(results, 'scraper_competitors') else []
