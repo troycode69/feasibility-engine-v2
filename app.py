@@ -1034,26 +1034,6 @@ elif page == "📊 Market Intel":
         # Get scraper competitors
         scraper_competitors = results.scraper_competitors if hasattr(results, 'scraper_competitors') else []
 
-        # Debug info
-        with st.expander("🔍 Debug: Data Status"):
-            st.write(f"**TractiQ data available:** {'Yes' if tractiq_data else 'No'}")
-            if tractiq_data:
-                total_tractiq_comps = sum(len(pdf.get('competitors', [])) for pdf in tractiq_data.values())
-                st.write(f"**TractiQ competitors:** {total_tractiq_comps}")
-                if total_tractiq_comps > 0:
-                    # Show sample competitor
-                    for pdf_data in tractiq_data.values():
-                        comps = pdf_data.get('competitors', [])
-                        if comps:
-                            st.write(f"**Sample competitor keys:** {list(comps[0].keys())}")
-                            rate_keys = [k for k in comps[0].keys() if 'rate' in k.lower()]
-                            st.write(f"**Rate keys found:** {rate_keys}")
-                            break
-
-            st.write(f"**Scraper competitors:** {len(scraper_competitors)}")
-            if scraper_competitors:
-                st.write(f"**Sample scraper competitor:** {scraper_competitors[0]}")
-
         # Merge the data
         merged_rates = merge_competitor_rates(tractiq_data, scraper_competitors)
 
