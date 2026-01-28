@@ -615,26 +615,11 @@ if page == "📝 Project Inputs":
     cached_data = None
     cached_stats = None
     if project_address:
-        # Get cached data filtered to 5-mile radius of current site
-        cached_data = get_cached_tractiq_data(project_address, site_address=project_address, radius_miles=5.0)
+        # Get cached TractiQ data (use as-is from TractiQ reports)
+        cached_data = get_cached_tractiq_data(project_address, site_address=None, radius_miles=5.0)
         if cached_data:
-            # Calculate stats from filtered data
+            # Calculate stats from data
             total_competitors = sum(len(pdf.get('competitors', [])) for pdf in cached_data.values())
-
-            # DEBUG: Check what's in the data
-            st.write("DEBUG - Raw competitor count:", total_competitors)
-            for pdf_name, pdf_data in cached_data.items():
-                comps = pdf_data.get('competitors', [])
-                st.write(f"DEBUG - {pdf_name}: {len(comps)} competitors")
-                if comps and len(comps) > 0:
-                    sample = comps[0]
-                    st.write(f"DEBUG - Sample competitor keys: {list(sample.keys())}")
-                    st.write(f"DEBUG - Sample distance_miles: {sample.get('distance_miles', 'MISSING')}")
-                    rate_keys = [k for k in sample.keys() if 'rate' in k.lower()]
-                    st.write(f"DEBUG - Sample rate keys: {rate_keys}")
-                    if rate_keys:
-                        st.write(f"DEBUG - Sample rate value: {sample.get(rate_keys[0])}")
-                    break
 
             cached_stats = {
                 'total_competitors': total_competitors,
@@ -649,9 +634,9 @@ if page == "📝 Project Inputs":
     # Show cached data status
     if cached_data and cached_stats:
         comp_count = cached_stats.get('total_competitors', 0)
-        st.success(f"✅ Found {comp_count} competitors within 5 miles!")
+        st.success(f"✅ Found cached TractiQ data with {comp_count} competitors!")
         col1, col2, col3 = st.columns(3)
-        col1.metric("Nearby Competitors", comp_count)
+        col1.metric("Competitors", comp_count)
         col2.metric("Data Sources", cached_stats.get('data_sources', 0))
         col3.metric("Last Updated", cached_stats.get('last_updated', 'Unknown')[:10] if cached_stats.get('last_updated') else 'Unknown')
 
@@ -1052,15 +1037,15 @@ elif page == "📊 Market Intel":
         from src.rate_merger import merge_competitor_rates
         from src.tractiq_cache import get_cached_tractiq_data
 
-        # Get TractiQ data from cache if available, filtered by distance from current site
+        # Get TractiQ data from cache if available
         tractiq_data = {}
         if st.session_state.get("tractiq_market_id"):
             project_address = st.session_state.property_data.get('address', '')
             if project_address:
-                # Get cached data filtered to 5-mile radius of current site
+                # Get cached data (use TractiQ data as-is)
                 tractiq_data = get_cached_tractiq_data(
                     st.session_state.tractiq_market_id,
-                    site_address=project_address,
+                    site_address=None,
                     radius_miles=5.0
                 )
 

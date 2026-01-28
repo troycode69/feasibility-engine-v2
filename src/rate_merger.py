@@ -150,12 +150,14 @@ def merge_competitor_rates(tractiq_data: Dict, scraper_competitors: List[Dict]) 
 
                         if unit_size in standard_sizes and rate:
                             # Check for climate control indicator in key or separate field
-                            is_climate = (
-                                'climate' in key.lower() or
-                                'cc' in key.lower() or
-                                comp.get(f'{key}_climate', False) or
-                                comp.get('climate_control', False)
-                            )
+                            # IMPORTANT: Check for non-cc first before checking for cc
+                            key_lower = key.lower()
+                            if 'noncc' in key_lower or 'ncc' in key_lower or 'non-cc' in key_lower or 'non_cc' in key_lower:
+                                is_climate = False
+                            elif 'climate' in key_lower or 'cc' in key_lower:
+                                is_climate = True
+                            else:
+                                is_climate = comp.get(f'{key}_climate', False) or comp.get('climate_control', False)
                             climate_type = "climate" if is_climate else "non_climate"
                             rates_by_size[unit_size][climate_type].append(rate)
 
