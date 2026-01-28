@@ -16,25 +16,26 @@ def extract_unit_size(size_str: str) -> Optional[str]:
         "5x5" -> "5x5"
         "5 x 5" -> "5x5"
         "rate_5x5" -> "5x5"
+        "rate_noncc-5x10" -> "5x10"
         "5X5" -> "5x5"
     """
     if not size_str:
         return None
 
-    # Remove common prefixes (with both underscore and hyphen)
-    size_str = size_str.replace('rate_', '').replace('Rate_', '')
-    size_str = size_str.replace('rate-', '').replace('Rate-', '')
-
-    # Remove climate control indicators (with both underscore and hyphen)
-    size_str = size_str.replace('_cc', '').replace('_CC', '')
-    size_str = size_str.replace('-cc', '').replace('-CC', '')
-    size_str = size_str.replace('_ncc', '').replace('_NCC', '')
-    size_str = size_str.replace('-ncc', '').replace('-NCC', '')
-    size_str = size_str.replace('_noncc', '').replace('_NONCC', '')
-    size_str = size_str.replace('-noncc', '').replace('-NONCC', '')
-
-    # Normalize spacing and case
+    # Normalize spacing and case first
     size_str = size_str.lower().replace(' ', '').strip()
+
+    # Remove rate prefix (with both underscore and hyphen)
+    size_str = size_str.replace('rate_', '').replace('rate-', '')
+
+    # Remove climate control indicators - IMPORTANT: Remove longest patterns first to avoid partial matches
+    # Examples: "noncc-5x10", "5x10-noncc", "ncc-5x10", "cc-5x10"
+    size_str = size_str.replace('noncc-', '').replace('-noncc', '').replace('_noncc', '')
+    size_str = size_str.replace('ncc-', '').replace('-ncc', '').replace('_ncc', '')
+    size_str = size_str.replace('cc-', '').replace('-cc', '').replace('_cc', '')
+
+    # Final cleanup
+    size_str = size_str.strip('_-')
 
     # Check if it matches pattern like "5x5", "10x10", etc.
     if 'x' in size_str:
