@@ -20,7 +20,7 @@ from datetime import datetime
 
 @dataclass
 class ReportData:
-    """Complete data package for LLM report generation"""
+    """Complete data package for LLM report generation - includes ALL TractiQ data"""
     # Project basics
     project_name: str = ""
     site_address: str = ""
@@ -35,27 +35,53 @@ class ReportData:
     # Market analysis
     market_analysis: Dict = field(default_factory=dict)
 
-    # Competitor data
+    # Competitor data (detailed facility data with rates)
     competitor_analysis: Dict = field(default_factory=dict)
+    competitors: List = field(default_factory=list)  # Full competitor list with rates
 
-    # Demographics
+    # Demographics (all radii: 1mi, 3mi, 5mi)
     demographics: Dict = field(default_factory=dict)
+
+    # SF per capita analysis (all radii)
+    sf_per_capita: Dict = field(default_factory=dict)
+
+    # Market supply (facility counts by radius)
+    market_supply: Dict = field(default_factory=dict)
+
+    # Commercial developments pipeline
+    commercial_developments: List = field(default_factory=list)
+
+    # Housing developments pipeline
+    housing_developments: List = field(default_factory=list)
+
+    # Rate data (extracted rates for market positioning)
+    rate_data: Dict = field(default_factory=dict)
 
     # Proposed project details
     proposed_nrsf: int = 0
     proposed_unit_mix: Dict = field(default_factory=dict)
 
+    # Analysis radius used
+    analysis_radius: int = 3
+
     def to_json(self) -> str:
-        """Convert to JSON string for LLM context"""
+        """Convert to JSON string for LLM context - includes ALL data"""
         return json.dumps({
             "project_name": self.project_name,
             "site_address": self.site_address,
             "analysis_date": self.analysis_date,
+            "analysis_radius_miles": self.analysis_radius,
             "site_score": self.site_score,
             "financial_metrics": self.financial_metrics,
             "market_analysis": self.market_analysis,
             "competitor_analysis": self.competitor_analysis,
+            "competitors_detail": self.competitors[:15],  # Top 15 closest for context
             "demographics": self.demographics,
+            "sf_per_capita": self.sf_per_capita,
+            "market_supply": self.market_supply,
+            "commercial_developments": self.commercial_developments[:10],  # Top 10 for context
+            "housing_developments": self.housing_developments[:10],
+            "rate_data": self.rate_data,
             "proposed_nrsf": self.proposed_nrsf,
             "proposed_unit_mix": self.proposed_unit_mix
         }, indent=2)

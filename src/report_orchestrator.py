@@ -200,32 +200,23 @@ def load_tractiq_data(market_id: Optional[str]) -> Optional[Dict]:
         # Get aggregated data which has calculated SF per capita values
         aggregated = market_data.get('aggregated_data', {})
 
-        # Filter competitors by distance (5.5 miles from site)
+        # Get all competitors from aggregated data
         all_competitors = aggregated.get('competitors', [])
 
-        # Try to geocode the site address for distance filtering
-        try:
-            from src.geocoding import geocode_address
-            site_lat, site_lon, _ = geocode_address(market_id)
+        # Use pre-calculated distance_miles from TractiQ data (no re-filtering needed)
+        # TractiQ already provides accurate distances from site
+        # Only filter if distance_miles exists and is within 5.5 miles
+        filtered_competitors = []
+        for comp in all_competitors:
+            dist = comp.get('distance_miles')
+            if dist is not None and dist <= 5.5:
+                filtered_competitors.append(comp)
+            elif dist is None:
+                # No distance data - include competitor but flag it
+                filtered_competitors.append(comp)
 
-            # Filter competitors by distance
-            from src.rate_merger import calculate_distance
-            filtered_competitors = []
-            for comp in all_competitors:
-                if comp.get('latitude') and comp.get('longitude'):
-                    distance = calculate_distance(
-                        site_lat, site_lon,
-                        comp['latitude'], comp['longitude']
-                    )
-                    if distance <= 5.5:
-                        comp['distance_miles'] = distance
-                        filtered_competitors.append(comp)
-
-            competitors = filtered_competitors if filtered_competitors else all_competitors
-            print(f"Filtering complete: {len(competitors)} of {len(all_competitors)} competitors within 5.5 miles")
-        except:
-            # If geocoding fails, use all competitors
-            competitors = all_competitors
+        competitors = filtered_competitors if filtered_competitors else all_competitors
+        print(f"Loaded {len(competitors)} competitors from cache (of {len(all_competitors)} total)")
 
         result = {
             'competitor_count': len(competitors),
@@ -318,8 +309,9 @@ def run_analytics(inputs: ProjectInputs, custom_demographics: Optional[Dict] = N
         # Get data for selected radius (with fallbacks)
         pop_key = f'population_{analysis_radius}mi'
         income_key = f'median_income_{analysis_radius}mi'
-        renter_key = f'renter_occupied_pct_{analysis_radius}mi'
         households_key = f'households_{analysis_radius}mi'
+        # Cache uses 'renter_pct' not 'renter_occupied_pct'
+        renter_key = f'renter_pct_{analysis_radius}mi'
 
         demographics = {
             "population_1mi": tractiq_demo.get('population_1mi', 0),
@@ -330,7 +322,10 @@ def run_analytics(inputs: ProjectInputs, custom_demographics: Optional[Dict] = N
             "population": tractiq_demo.get(pop_key, tractiq_demo.get('population_3mi', 0)),
             "households_3mi": tractiq_demo.get(households_key, tractiq_demo.get('households_3mi', 0)),
             "median_income": tractiq_demo.get(income_key, tractiq_demo.get('median_income_3mi', 0)),
-            "renter_occupied_pct": tractiq_demo.get(renter_key, tractiq_demo.get('renter_occupied_pct_3mi', 0)),
+            # Try both key formats for backwards compatibility
+            "renter_occupied_pct": tractiq_demo.get(renter_key,
+                tractiq_demo.get(f'renter_occupied_pct_{analysis_radius}mi',
+                tractiq_demo.get('renter_pct_3mi', 40.0))),
             "median_age": tractiq_demo.get('median_age', 37.0),
             "growth_rate": tractiq_demo.get('population_growth_rate_annual', 1.5),
             "job_growth": 2.0,  # Not in TractiQ PDF
@@ -549,10 +544,17 @@ def generate_report(inputs: ProjectInputs, use_llm: bool = True) -> FeasibilityR
         # Prepare data for LLM
         print("Preparing data for LLM report generation...")
 
+        # Load full TractiQ cached data for this market
+        tractiq_full = load_tractiq_data(inputs.tractiq_market_id)
+        tractiq_agg = {}
+        if tractiq_full:
+            tractiq_agg = tractiq_full  # Contains competitors, demographics, sf_per_capita, etc.
+
         report_data = llm_report_generator.ReportData(
             project_name=inputs.project_name,
             site_address=analytics.geocoded_address,
             analysis_date=datetime.now().strftime("%Y-%m-%d"),
+            analysis_radius=getattr(analytics, 'analysis_radius', 3),
             site_score=analytics.site_scorecard.to_dict(),
             financial_metrics={
                 "total_development_cost": analytics.pro_forma.development_costs.total_cost,
@@ -575,11 +577,28 @@ def generate_report(inputs: ProjectInputs, use_llm: bool = True) -> FeasibilityR
                 "opportunity_tier": analytics.market_opportunity["opportunity_tier"],
                 "supply_gap_sf": analytics.market_supply_demand.supply_gap_sf
             },
-            demographics={
+            # Full demographics from TractiQ (all radii)
+            demographics=tractiq_agg.get('demographics', {
+                "population_1mi": analytics.market_supply_demand.demand.population_1mi,
                 "population_3mi": analytics.market_supply_demand.demand.population_3mi,
+                "population_5mi": analytics.market_supply_demand.demand.population_5mi,
                 "median_income": analytics.market_supply_demand.demand.median_income_3mi,
                 "renter_occupied_pct": analytics.market_supply_demand.demand.renter_occupied_pct,
                 "growth_rate": analytics.market_supply_demand.demand.population_growth_rate
+            }),
+            # SF per capita from TractiQ (all radii)
+            sf_per_capita=tractiq_agg.get('sf_per_capita_analysis', {}),
+            # Market supply (facility counts by radius)
+            market_supply=tractiq_agg.get('market_supply', {}),
+            # Full competitor list with rates
+            competitors=tractiq_agg.get('competitors', []),
+            # Commercial development pipeline
+            commercial_developments=tractiq_agg.get('commercial_developments', []),
+            # Housing development pipeline
+            housing_developments=tractiq_agg.get('housing_developments', []),
+            # Rate data
+            rate_data={
+                "average_rates_by_size": tractiq_agg.get('extracted_rates', [])[:20]  # Sample rates
             },
             proposed_nrsf=inputs.proposed_nrsf,
             proposed_unit_mix=inputs.proposed_unit_mix

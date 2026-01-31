@@ -629,36 +629,51 @@ if page == "📝 Project Inputs":
     cached_data = None
     cached_stats = None
     market_supply = {}
+    demographics = {}
+    sf_per_capita = {}
     if project_address:
         # Get cached TractiQ data with user-selected radius (default 5-mile)
         selected_radius = st.session_state.get('analysis_radius', 5)
 
-        # First get the full market data to access market_supply counts
+        # Get the full market data to access aggregated data (authoritative counts, demographics, etc.)
         cache = TractIQCache()
         full_market_data = cache.get_market_data(project_address)
         if full_market_data:
             agg_data = full_market_data.get('aggregated_data', {})
             market_supply = agg_data.get('market_supply', {})
+            demographics = agg_data.get('demographics', {})
+            sf_per_capita = agg_data.get('sf_per_capita_analysis', {})
 
-        # Then get filtered competitor data
+            # Get competitor count from aggregated data
+            all_competitors = agg_data.get('competitors', [])
+
+            # Filter competitors by radius using pre-calculated distance_miles
+            filtered_comps = [c for c in all_competitors
+                             if c.get('distance_miles') is not None
+                             and c.get('distance_miles') <= selected_radius]
+
+        # Also get pdf_sources data for backwards compatibility
         cached_data = get_cached_tractiq_data(project_address, site_address=project_address, radius_miles=selected_radius)
-        if cached_data:
+
+        if full_market_data or cached_data:
             # Use authoritative facility counts from TractiQ SF per Capita report
             radius_key = f"facility_count_{selected_radius}mi"
             total_competitors = market_supply.get(radius_key, 0)
 
-            # Fallback to counting if market_supply not available
-            if total_competitors == 0:
+            # Fallback to filtered competitors count if market_supply not available
+            if total_competitors == 0 and 'filtered_comps' in dir():
+                total_competitors = len(filtered_comps)
+
+            # Last fallback to pdf_sources count
+            if total_competitors == 0 and cached_data:
                 total_competitors = sum(len(pdf.get('competitors', [])) for pdf in cached_data.values())
 
             cached_stats = {
                 'total_competitors': total_competitors,
-                'data_sources': len(cached_data),
-                'last_updated': max(
-                    (pdf.get('extraction_date', pdf.get('cached_date', ''))
-                     for pdf in cached_data.values()),
-                    default=''
-                )
+                'data_sources': full_market_data.get('pdf_count', 1) if full_market_data else len(cached_data) if cached_data else 0,
+                'last_updated': full_market_data.get('last_updated', '') if full_market_data else '',
+                'demographics': demographics,
+                'sf_per_capita': sf_per_capita
             }
 
     # Show cached data status

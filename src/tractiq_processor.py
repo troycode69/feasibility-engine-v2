@@ -24,6 +24,8 @@ def process_tractiq_files(uploaded_files) -> Dict:
     historical_trends = []
     demographics = {}
     sf_per_capita_analysis = {}
+    commercial_developments = []
+    housing_developments = []
 
     for file in uploaded_files:
         try:
@@ -58,6 +60,10 @@ def process_tractiq_files(uploaded_files) -> Dict:
             if data.get('sf_per_capita_analysis'):
                 # Merge SF per capita analysis
                 sf_per_capita_analysis.update(data['sf_per_capita_analysis'])
+            if data.get('commercial_developments'):
+                commercial_developments.extend(data['commercial_developments'])
+            if data.get('housing_developments'):
+                housing_developments.extend(data['housing_developments'])
 
         except Exception as e:
             print(f"Error processing {file.name}: {str(e)}")
@@ -73,6 +79,8 @@ def process_tractiq_files(uploaded_files) -> Dict:
         "historical_trends": historical_trends,
         "demographics": demographics,
         "sf_per_capita_analysis": sf_per_capita_analysis,
+        "commercial_developments": commercial_developments,
+        "housing_developments": housing_developments,
         "extraction_date": datetime.now().isoformat()
     }
 
@@ -483,6 +491,21 @@ def process_excel(file) -> Dict:
             rates_data = extract_rates_from_excel(file)
             result["extracted_rates"] = rates_data.get("rates", [])
             result["unit_mix"] = rates_data.get("unit_mix", {})
+            # Also extract competitors from rental comps (has facility data with rates)
+            if rates_data.get("competitors"):
+                result["competitors"] = rates_data.get("competitors", [])
+            return result
+
+        # COMMERCIAL DEVELOPMENTS.XLSX - Extract pipeline data
+        elif 'commercial' in file_name:
+            developments = extract_commercial_developments(file)
+            result["commercial_developments"] = developments
+            return result
+
+        # HOUSING DEVELOPMENTS.XLSX - Extract housing pipeline data
+        elif 'housing' in file_name:
+            developments = extract_housing_developments(file)
+            result["housing_developments"] = developments
             return result
 
         # Generic Excel processing (fallback)
@@ -680,14 +703,252 @@ def extract_sf_from_excel(file) -> Dict:
 
 def extract_competitors_from_excel(file) -> List[Dict]:
     """Extract competitor data from Storage Facilities.xlsx"""
-    # Placeholder for now
-    return []
+    import pandas as pd
+    import io
+
+    try:
+        file_content = file.read()
+        if hasattr(file, 'seek'):
+            file.seek(0)
+        excel_buffer = io.BytesIO(file_content)
+
+        df = pd.read_excel(excel_buffer)
+        col_map = {str(c).lower().strip(): c for c in df.columns}
+
+        competitors = []
+        for idx, row in df.iterrows():
+            comp = {"source": "TractIQ Facilities"}
+
+            # Map common columns
+            if 'facility id' in col_map:
+                comp['facility_id'] = str(row[col_map['facility id']])
+            if 'facility' in col_map:
+                comp['name'] = row[col_map['facility']]
+            elif 'name' in col_map:
+                comp['name'] = row[col_map['name']]
+            if 'address' in col_map:
+                comp['address'] = row[col_map['address']]
+            if 'square ft.' in col_map:
+                try:
+                    comp['nrsf'] = int(float(row[col_map['square ft.']]))
+                except:
+                    pass
+            if 'distance (miles)' in col_map:
+                try:
+                    comp['distance_miles'] = float(row[col_map['distance (miles)']])
+                except:
+                    pass
+
+            if comp.get('name') or comp.get('address'):
+                competitors.append(comp)
+
+        return competitors
+    except Exception as e:
+        print(f"Error extracting competitors from Excel: {e}")
+        return []
 
 
 def extract_rates_from_excel(file) -> Dict:
-    """Extract rate data from Rental Comps.xlsx"""
-    # Placeholder for now
-    return {"rates": [], "unit_mix": {}}
+    """Extract rate data from Rental Comps.xlsx with proper facility deduplication"""
+    import pandas as pd
+    import io
+
+    try:
+        file_content = file.read()
+        if hasattr(file, 'seek'):
+            file.seek(0)
+        excel_buffer = io.BytesIO(file_content)
+
+        df = pd.read_excel(excel_buffer)
+        df.columns = [str(c).lower().strip() for c in df.columns]
+
+        standard_sizes = ['5x5', '5x10', '10x10', '10x15', '10x20', '10x30']
+        facilities = {}
+        all_rates = []
+
+        for idx, row in df.iterrows():
+            facility_id = row.get('facility id')
+            if pd.isna(facility_id):
+                continue
+
+            # Skip non-numeric IDs (like 'Average')
+            try:
+                facility_id = str(int(float(facility_id)))
+            except (ValueError, TypeError):
+                continue
+
+            if facility_id not in facilities:
+                nrsf = None
+                try:
+                    sq_val = row.get('square ft.')
+                    if pd.notna(sq_val):
+                        nrsf = int(float(sq_val))
+                except:
+                    pass
+
+                distance = None
+                try:
+                    dist_val = row.get('distance (miles)')
+                    if pd.notna(dist_val):
+                        distance = float(dist_val)
+                except:
+                    pass
+
+                facilities[facility_id] = {
+                    "facility_id": facility_id,
+                    "name": row.get('facility', ''),
+                    "address": row.get('address', ''),
+                    "nrsf": nrsf,
+                    "distance_miles": distance,
+                    "source": "TractIQ"
+                }
+
+            # Extract rates for each unit size
+            comp = facilities[facility_id]
+            for size in standard_sizes:
+                # Climate controlled
+                cc_col = f'cc - {size}'
+                if cc_col in df.columns:
+                    val = row.get(cc_col)
+                    if pd.notna(val) and str(val) != 'N/A':
+                        try:
+                            rate = float(str(val).replace('$', '').replace(',', ''))
+                            if 0.1 <= rate <= 50:
+                                comp[f"rate_cc-{size}"] = rate
+                                all_rates.append(rate)
+                        except:
+                            pass
+
+                # Non-climate controlled
+                noncc_col = f'non cc - {size}'
+                if noncc_col in df.columns:
+                    val = row.get(noncc_col)
+                    if pd.notna(val) and str(val) != 'N/A':
+                        try:
+                            rate = float(str(val).replace('$', '').replace(',', ''))
+                            if 0.1 <= rate <= 50:
+                                comp[f"rate_noncc-{size}"] = rate
+                                all_rates.append(rate)
+                        except:
+                            pass
+
+        return {
+            "rates": sorted(list(set(all_rates))),
+            "unit_mix": {},
+            "competitors": list(facilities.values())
+        }
+    except Exception as e:
+        print(f"Error extracting rates from Excel: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"rates": [], "unit_mix": {}, "competitors": []}
+
+
+def extract_commercial_developments(file) -> List[Dict]:
+    """Extract commercial development pipeline from Commercial Developments.xlsx"""
+    import pandas as pd
+    import io
+
+    try:
+        file_content = file.read()
+        if hasattr(file, 'seek'):
+            file.seek(0)
+        excel_buffer = io.BytesIO(file_content)
+
+        df = pd.read_excel(excel_buffer)
+        df.columns = [str(c).lower().strip() for c in df.columns]
+
+        developments = []
+        for idx, row in df.iterrows():
+            dev = {}
+
+            # Map common columns
+            if 'project name' in df.columns:
+                dev['name'] = row.get('project name', '')
+            elif 'name' in df.columns:
+                dev['name'] = row.get('name', '')
+
+            if 'address' in df.columns:
+                dev['address'] = row.get('address', '')
+
+            if 'description' in df.columns:
+                dev['description'] = row.get('description', '')
+
+            if 'estimated construction value' in df.columns:
+                try:
+                    dev['cost'] = float(row.get('estimated construction value', 0))
+                except:
+                    pass
+
+            if 'stage' in df.columns:
+                dev['stage'] = row.get('stage', '')
+
+            if 'primary building use' in df.columns:
+                dev['building_uses'] = row.get('primary building use', '')
+
+            if dev.get('name'):
+                developments.append(dev)
+
+        print(f"Commercial developments parsed: {len(developments)} projects")
+        return developments
+    except Exception as e:
+        print(f"Error extracting commercial developments: {e}")
+        return []
+
+
+def extract_housing_developments(file) -> List[Dict]:
+    """Extract housing development pipeline from Housing Developments.xlsx"""
+    import pandas as pd
+    import io
+
+    try:
+        file_content = file.read()
+        if hasattr(file, 'seek'):
+            file.seek(0)
+        excel_buffer = io.BytesIO(file_content)
+
+        df = pd.read_excel(excel_buffer)
+        df.columns = [str(c).lower().strip() for c in df.columns]
+
+        developments = []
+        for idx, row in df.iterrows():
+            dev = {"type": "housing"}
+
+            # Map common columns
+            if 'project name' in df.columns:
+                dev['name'] = row.get('project name', '')
+            elif 'name' in df.columns:
+                dev['name'] = row.get('name', '')
+
+            if 'address' in df.columns:
+                dev['address'] = row.get('address', '')
+
+            if 'description' in df.columns:
+                dev['description'] = row.get('description', '')
+
+            if 'total units' in df.columns:
+                try:
+                    dev['units'] = int(float(row.get('total units', 0)))
+                except:
+                    pass
+
+            if 'estimated construction value' in df.columns:
+                try:
+                    dev['cost'] = float(row.get('estimated construction value', 0))
+                except:
+                    pass
+
+            if 'stage' in df.columns:
+                dev['stage'] = row.get('stage', '')
+
+            if dev.get('name'):
+                developments.append(dev)
+
+        print(f"Housing developments parsed: {len(developments)} projects")
+        return developments
+    except Exception as e:
+        print(f"Error extracting housing developments: {e}")
+        return []
 
 
 def process_excel_generic(file) -> Dict:
