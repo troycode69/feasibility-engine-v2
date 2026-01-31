@@ -9,9 +9,8 @@ import re
 APP_VERSION = "2.4.0-PRODUCTION"
 
 # CRITICAL: Use st.write() early to verify code is deployed
-import streamlit as st
-st.set_page_config(page_title="Storage Feasibility Engine", layout="wide")
 # Debug mode disabled for production
+# st.set_page_config is called further down with icon and title
 
 # Add src to path for local imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -129,6 +128,13 @@ try:
     from src.feasibility_engine import FeasibilityEngine
 except:
     FeasibilityEngine = None
+
+# Import UI components
+try:
+    from src.ui.command_center import render_command_center
+except ImportError as e:
+    print(f"Command Center UI unavailable: {e}")
+    render_command_center = None
 # === TRACTIQ DATA INTEGRATION ===
 def load_tractiq_data():
     """
@@ -218,7 +224,7 @@ def merge_competitor_data(scraper_results):
     return merged
 
 # Set page config with logo as icon
-st.set_page_config(page_title="StorSageHQ", page_icon="assets/logo.png", layout="wide")
+st.set_page_config(page_title="StorSageHQ", page_icon="assets/logo_transparent.png", layout="wide")
 
 # === STORSAGE HQ BRANDING (THEME LOCKED) ===
 
@@ -249,111 +255,197 @@ if "feasibility_engine" not in st.session_state and FeasibilityEngine:
 # === STORSAGE HQ BRANDING (THEME LOCKED) ===
 st.markdown("""
 <style>
-    /* --- 1. GLOBAL RESET --- */
+    /* --- 1. GLOBAL RESET & TYPOGRAPHY --- */
     .stApp {
         background-color: #F4F6F8 !important; /* Light Gray Background */
+        color: #0C2340 !important;
+        font-family: 'Inter', sans-serif !important;
+        padding-top: 80px !important; /* Offset for Fixed SaaS Header */
     }
     
-    /* Global Text Defaults - Navy */
-    .stApp p, .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6, .stApp li, .stApp span, .stApp label {
-        color: #0C2340 !important;
+    /* --- 2. FIXED SAAS HEADER --- */
+    /* Target the container that wraps the navigation radio group */
+    div[data-testid="stVerticalBlock"] > div.element-container:has(div[role="radiogroup"]) {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important; /* Full Screen Width */
+        height: 70px !important;
+        background-color: #0C2340 !important; /* StorSageHQ Navy */
+        z-index: 999999 !important; /* Above Deploy Bar */
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important; /* Center the tabs */
+        border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    /* Radio Group - Strict Single Row Flex */
+    div[role="radiogroup"] {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-wrap: nowrap !important; /* CRITICAL: No wrapping */
+        gap: 0 !important;
+        background-color: transparent !important;
+        border: none !important;
+        width: auto !important;
+    }
+    
+    /* Hide ugly radio circles */
+    div[role="radiogroup"] input[type="radio"] {
+        display: none !important;
+    }
+    div[role="radiogroup"] label > div:first-child {
+        display: none !important;
+    }
+    
+    /* Nav Tabs Styling */
+    div[role="radiogroup"] label {
+        flex: 0 1 auto !important; /* Do not stretch */
+        white-space: nowrap !important; /* CRITICAL: Prevent wrapping */
+        margin: 0 15px !important; /* Spacing between tabs */
+        padding: 10px 20px !important;
+        background-color: transparent !important;
+        border: none !important;
+        border-radius: 4px !important;
+        transition: all 0.2s ease !important;
+        cursor: pointer !important;
+    }
+    
+    /* Tab Text */
+    div[role="radiogroup"] p {
+        color: #FFFFFF !important;
+        font-weight: 500 !important;
+        font-size: 15px !important;
+        margin: 0 !important;
+    }
+    
+    /* Active State Highlight */
+    div[role="radiogroup"] label:has(div[data-checked="true"]) {
+        background-color: #1A3A5E !important; /* Lighter Navy */
+        border-bottom: 2px solid #4A90E2 !important; /* Accent Blue */
+    }
+    
+    /* Hover State */
+    div[role="radiogroup"] label:hover {
+        background-color: rgba(255,255,255,0.05) !important;
     }
 
-    /* --- 2. SIDEBAR - SEAMLESS BLEND --- */
+    /* --- 3. SIDEBAR STYLING --- */
     [data-testid="stSidebar"] {
-        background-color: #0C2340 !important; /* Exact Brand Navy */
+        background-color: #0C2340 !important;
     }
-    /* All sidebar text must be White */
     [data-testid="stSidebar"] * {
         color: #FFFFFF !important;
     }
-
-    /* --- 3. TOP NAVIGATION HEADER --- */
-    /* Container for the Top Nav (Radio Group) */
-    div[role="radiogroup"] {
-        background-color: #0C2340 !important;
-        padding: 10px 20px !important;
-        border-radius: 8px !important;
-        margin-bottom: 20px !important;
-        border: 1px solid #1A3A5C !important;
+    /* Logo Transparency Hack */
+    [data-testid="stSidebar"] img {
+        mix-blend-mode: multiply !important;
     }
-    /* Nav Items Text (Top Nav Labels) */
-    div[role="radiogroup"] p {
-        color: #FFFFFF !important; /* Force White Text */
+
+    /* --- 4. HERO SECTION (Juniper Square) --- */
+    .hero-card {
+        background-color: #FFFFFF !important;
+        border-radius: 12px !important;
+        padding: 2.5rem !important;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.04) !important;
+        border: 1px solid #E2E8F0 !important;
+        margin-bottom: 2rem !important;
+    }
+    .hero-metric-label {
+        color: #64748B !important;
+        font-size: 0.85rem !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
         font-weight: 600 !important;
-        background-color: transparent !important;
     }
-    div[role="radiogroup"] div {
-        color: #FFFFFF !important;
-    }
-    /* Active Tab Highlight */
-    div[role="radiogroup"] [data-checked="true"] + div {
-        color: #4A90E2 !important; /* Blue text for active tab */
-    }
-
-    /* --- 4. METRIC CARDS --- */
-    div[data-testid="metric-container"] {
-        background-color: #FFFFFF !important; /* White Card */
-        border: 1px solid #0C2340 !important; /* Navy Border */
-        border-radius: 8px !important;
-        padding: 16px !important;
-        box-shadow: 0 2px 4px rgba(12, 35, 64, 0.1) !important;
-    }
-    /* Label styling */
-    [data-testid="stMetricLabel"] {
-        color: #0C2340 !important; /* Navy Label */
-    }
-    /* Value styling */
-    [data-testid="stMetricValue"] {
-        color: #4A90E2 !important; /* Brand Blue */
+    .hero-metric-value {
+        color: #0C2340 !important;
+        font-size: 2.5rem !important;
         font-weight: 700 !important;
+        font-family: 'Georgia', serif !important;
     }
 
-    /* --- 5. INPUTS & BUTTONS --- */
-    
-    /* FILE UPLOADER - Navy Box, White Text */
-    [data-testid="stFileUploader"] {
-        background-color: #0C2340 !important;
-        border: 1px dashed #FFFFFF !important;
+    /* --- 5. DATA TABLES (Stripe) --- */
+    [data-testid="stDataFrame"] {
+        border: 1px solid #E2E8F0 !important;
         border-radius: 8px !important;
+        background-color: #FFFFFF !important;
     }
-    [data-testid="stFileUploader"] section {
-        background-color: #0C2340 !important;
+    [data-testid="stDataFrame"] div[role="columnheader"] {
+        background-color: #F8FAFC !important;
+        color: #0C2340 !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        font-size: 0.75rem !important;
+        border-bottom: 1px solid #E2E8F0 !important;
     }
-    /* Force "Drag and drop" text to White */
-    [data-testid="stFileUploader"] div, [data-testid="stFileUploader"] span, [data-testid="stFileUploader"] small {
-        color: #FFFFFF !important;
+    [data-testid="stDataFrame"] div[role="row"] {
+        background-color: #FFFFFF !important;
+        border-bottom: 1px solid #F1F5F9 !important;
+        color: #334155 !important;
     }
-    /* "Browse files" button */
-    [data-testid="stFileUploader"] button {
+
+    /* --- 6. INPUT CARDS (TryCactus) --- */
+    /* Only apply card styling to columns that contain inputs or metrics */
+    div[data-testid="stColumn"]:has(div[data-testid="stTextInput"], div[data-testid="stNumberInput"], div[data-testid="stTextArea"], div[data-testid="metric-container"], .hero-card) {
+        background-color: #FFFFFF !important;
+        border-radius: 16px !important;
+        padding: 2rem !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.05) !important;
+        border: none !important;
+        margin-bottom: 1rem !important;
+    }
+
+    div[data-testid="stTextInput"] input, 
+    div[data-testid="stNumberInput"] input, 
+    div[data-testid="stTextArea"] textarea {
         background-color: #FFFFFF !important;
         color: #0C2340 !important;
-        border: none !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 8px !important;
+        padding: 10px !important;
+    }
+    div[data-testid="stTextInput"] label, 
+    div[data-testid="stNumberInput"] label {
+         color: #0C2340 !important;
+         font-weight: 600 !important;
     }
 
-    /* PRIMARY BUTTONS (Rocket/Action) */
+    /* --- 7. BUTTONS (Standard Brands) --- */
     .stButton > button {
-        background-color: #0C2340 !important; /* Navy Background */
-        color: #FFFFFF !important; /* White Text */
-        border: 1px solid #FFFFFF !important;
+        background-color: #0C2340 !important;
+        color: #FFFFFF !important; /* Force White Text */
+        border: 1px solid rgba(255,255,255,0.2) !important;
         border-radius: 6px !important;
+        padding: 0.75rem 2rem !important;
         font-weight: 600 !important;
+        width: 100% !important;
+        transition: all 0.2s ease !important;
     }
     .stButton > button:hover {
-        background-color: #4A90E2 !important; /* Blue Hover */
+        background-color: #1E293B !important;
         color: #FFFFFF !important;
-        border-color: #4A90E2 !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+        transform: translateY(-1px) !important;
     }
-    /* Ensure text inside button is white (redundant safety) */
+    /* Rocket Button Label Specificity Fix */
     .stButton > button p {
         color: #FFFFFF !important;
     }
 
-    /* EXPANDERS - Clean White & Navy */
+    /* --- 8. MISC UI --- */
+    [data-testid="stFileUploader"] {
+        background-color: #FFFFFF !important;
+        border-radius: 12px !important;
+        padding: 1rem !important;
+    }
     .streamlit-expanderHeader {
         background-color: #FFFFFF !important;
         color: #0C2340 !important;
-        border: 1px solid #E0E0E0 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -371,8 +463,9 @@ page = st.radio(
 
 # Sidebar - Cleaned up (Logo + TractIQ only)
 with st.sidebar:
-    st.image("assets/logo.png", use_container_width=True)
-    st.markdown("---")
+    # Sidebar Logo - Enforced Transparency
+    st.image("assets/logo_transparent.png", use_container_width=True)
+    st.sidebar.markdown("---")
     # TractIQ Cache Management
     st.markdown("### 💾 TractIQ Cache")
     from src.tractiq_cache import list_cached_markets, get_market_stats
@@ -415,19 +508,22 @@ if page == "📝 Project Inputs":
     if "input_name" not in st.session_state:
         st.session_state.input_name = st.session_state.property_data.get('name', '')
 
-    project_address = st.text_input(
-        "Site Address*",
-        key="input_address",
-        placeholder="Enter the property address (e.g., 123 Main St, Nashville, TN 37211)",
-        help="This is the only required field to start analysis"
-    )
+    # Soft Card Wrapper for Inputs
+    input_col, = st.columns(1)
+    with input_col:
+        project_address = st.text_input(
+            "Site Address*",
+            key="input_address",
+            placeholder="Enter the property address (e.g., 123 Main St, Nashville, TN 37211)",
+            help="This is the only required field to start analysis"
+        )
 
-    project_name = st.text_input(
-        "Project Name (Optional)",
-        key="input_name",
-        placeholder="e.g., Nashville Storage Center",
-        help="Optional - will use address if left blank"
-    )
+        project_name = st.text_input(
+            "Project Name (Optional)",
+            key="input_name",
+            placeholder="e.g., Nashville Storage Center",
+            help="Optional - will use address if left blank"
+        )
 
     st.markdown("---")
 
@@ -476,14 +572,17 @@ if page == "📝 Project Inputs":
     if not use_default_financials:
         col1, col2 = st.columns(2)
         with col1:
-            land_cost = st.number_input(
+            # Land Cost Input (Comma-Inside-Box)
+            land_cost_input = st.text_input(
                 "Land Cost ($)",
-                min_value=0,
-                max_value=10000000,
-                value=750000,
-                step=50000,
-                help="Purchase price of the land"
+                value="750,000",
+                help="Purchase price of the land. Use commas."
             )
+            # Backend Logic: Strip commas for calculation
+            try:
+                land_cost = float(land_cost_input.replace(",", "").replace("$", ""))
+            except ValueError:
+                land_cost = 0.0
             loan_to_cost = st.slider(
                 "Loan-to-Cost Ratio (%)",
                 min_value=50,
@@ -683,117 +782,17 @@ if page == "📝 Project Inputs":
                 irr = f"{results.pro_forma.metrics.irr_10yr:.1f}%"
 
             col1.metric("Site Score", site_score)
-            col2.metric("Market Balance", market_balance)
+            col2.metric("Market Balance", market_balance.title())
             col3.metric("Cap Rate", cap_rate)
             col4.metric("IRR (10yr)", irr)
             st.success("✅ Data ready - navigate to other pages to view detailed analysis")
 
 # === PAGE 2: COMMAND CENTER ===
 elif page == "🎯 Command Center":
-    st.header("Command Center")
-    st.caption(f"📅 {datetime.now().strftime('%A, %B %d, %Y')}")
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        st.markdown("### 🌅 Dashboard")
-        @st.cache_data(ttl=60)
-        def get_crm_summary():
-            if SecretaryAgent is None:
-                return 0, 0
-            try:
-                agent = SecretaryAgent()
-                data = agent.ingestor.fetch_crm_data()
-                contacts = data.get(Config.CONTACTS_TAB, pd.DataFrame())
-                props = data.get(Config.PROPERTIES_TAB, pd.DataFrame())
-                return len(contacts), len(props)
-            except:
-                return 0, 0
-        total_contacts, total_props = get_crm_summary()
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Total Contacts", total_contacts)
-        m2.metric("Properties", total_props)
-        m3.metric("Feasibility Score", f"{st.session_state.scorer.get_total_score()}/100")
-        # === SMART LEAD LISTS ===
-        st.markdown("---")
-        st.markdown("### 📋 Smart Lead Lists")
-        tab1, tab2, tab3 = st.tabs(["✅ Actionable", "🎯 Profile", "🔍 Skip Trace"])
-        with tab1:
-            st.caption("Leads with Phone & Email")
-            if get_actionable_leads is not None:
-                actionable = get_actionable_leads(limit=10)
-                if not actionable.empty:
-                    st.dataframe(actionable, hide_index=True)
-                else:
-                    st.info("No actionable leads")
-            else:
-                st.info("CRM features unavailable (cloud environment)")
-        with tab2:
-            st.caption("Status = New/FollowUp")
-            if get_profile_candidates is not None:
-                candidates = get_profile_candidates(limit=8)
-                if not candidates.empty:
-                    st.dataframe(candidates, hide_index=True)
-                else:
-                    st.info("No profile candidates")
-            else:
-                st.info("CRM features unavailable (cloud environment)")
-        with tab3:
-            st.caption("Missing contact info")
-            if get_skip_trace_list is not None:
-                skip_list = get_skip_trace_list(limit=20)
-                if not skip_list.empty:
-                    st.dataframe(skip_list, hide_index=True)
-                else:
-                    st.info("No skip trace needed")
-            else:
-                st.info("CRM features unavailable (cloud environment)")
-        # === CONTEXT-AWARE AI ===
-        st.markdown("---")
-        st.markdown("### 🤖 CRM Analyst AI (Gemini Flash)")
-        st.caption("Ask specific questions about your leads. Example: 'Which leads in Texas are missing phone numbers?'")
-        chat_box = st.container(height=300)
-        with chat_box:
-            for msg in st.session_state.chat_history:
-                with st.chat_message(msg["role"]):
-                    st.markdown(msg["content"])
-        if prompt := st.chat_input("Ask about leads, data, or scoring..."):
-            st.session_state.chat_history.append({"role": "user", "content": prompt})
-            with st.spinner("Analyzing CRM data..."):
-                try:
-                    response = st.session_state.ai_assistant.query(prompt)
-                except Exception as e:
-                    # Handle authentication and API errors gracefully
-                    error_msg = str(e)
-                    if "503" in error_msg or "auth" in error_msg.lower() or "credential" in error_msg.lower():
-                        response = "⚠️ **AI Offline**: Please run `gcloud auth application-default login` in your terminal to enable Gemini."
-                    else:
-                        response = f"⚠️ AI Error: {error_msg}"
-            st.session_state.chat_history.append({"role": "assistant", "content": response})
-            st.rerun()
-    with col2:
-        st.markdown("### 📥 Data Ingestion")
-        INPUT_FOLDER = "src/data/input"
-        os.makedirs(INPUT_FOLDER, exist_ok=True)
-        uploaded = st.file_uploader("Upload CRM Data", type=['csv', 'xlsx'])
-        if uploaded:
-            path = os.path.join(INPUT_FOLDER, uploaded.name)
-            with open(path, "wb") as f:
-                f.write(uploaded.getbuffer())
-            st.success(f"✅ {uploaded.name}")
-        staged = [f for f in os.listdir(INPUT_FOLDER) if f != ".DS_Store"]
-        if staged:
-            st.caption(f"{len(staged)} files staged")
-        if st.button("🚀 PROCESS", type="primary"):
-            with st.spinner("Processing..."):
-                try:
-                    result = run_adjustor_sync()
-                    st.success(f"✅ {result}")
-                    st.session_state.ai_assistant.refresh_context()
-                    get_crm_summary.clear()
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"{e}")
-                except Exception as e:
-                    st.error(f"{e}")
+    if render_command_center is not None:
+        render_command_center()
+    else:
+        st.error("Command Center UI module is unavailable")
 
 # === PAGE 2: MARKET INTEL (READ-ONLY - AI DRIVEN) ===
 elif page == "📊 Market Intel":
@@ -825,21 +824,30 @@ elif page == "📊 Market Intel":
     st.markdown("---")
 
     # Display 100-point site score
-    st.markdown("### 🎯 Site Feasibility Score")
     if hasattr(results, 'site_scorecard') and results.site_scorecard:
         scorecard = results.site_scorecard
 
-        # Big score display
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            score_color = "#4A90E2" if scorecard.total_score >= 70 else "#FFA500" if scorecard.total_score >= 55 else "#FF4444"
-            st.markdown(f"""
-            <div style="background-color: {score_color}; padding: 30px; border-radius: 15px; text-align: center;">
-                <h1 style="color: white; margin: 0; font-size: 60px;">{scorecard.total_score}/100</h1>
-                <p style="color: white; margin: 10px 0 0 0; font-size: 24px;">{scorecard.tier}</p>
-                <p style="color: white; margin: 5px 0 0 0; font-size: 18px;">{scorecard.recommendation}</p>
-            </div>
-            """, unsafe_allow_html=True)
+        # Centered Hero Card for Score
+        col_side, col_center, col_side2 = st.columns([1, 3, 1])
+        with col_center:
+            # Prepare data for the new Glassmorphism component
+            score_data = {
+                'score': scorecard.total_score,
+                'decision': scorecard.recommendation,
+                'confidence': scorecard.confidence,
+                'breakdown': {
+                    'Demographics': {'score': scorecard.demographics.total_score, 'max': scorecard.demographics.max_score},
+                    'Supply/Demand': {'score': scorecard.supply_demand.total_score, 'max': scorecard.supply_demand.max_score},
+                    'Site Attributes': {'score': scorecard.site_attributes.total_score, 'max': scorecard.site_attributes.max_score},
+                    'Competitive': {'score': scorecard.competitive_positioning.total_score, 'max': scorecard.competitive_positioning.max_score},
+                    'Economic': {'score': scorecard.economic_market.total_score, 'max': scorecard.economic_market.max_score}
+                },
+                'key_strengths': [], # Will populating this requires simple logic, leaving empty for now to match exact scope of visual refactor
+                'key_risks': []
+            }
+            
+            # Use the new component
+            render_feasibility_score(score_data)
 
         st.markdown("---")
 
@@ -898,14 +906,14 @@ elif page == "📊 Market Intel":
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("SF per Capita", f"{market.sf_per_capita_3mi:.2f}",
                    delta="Undersupplied" if market.sf_per_capita_3mi < 5.5 else "Balanced" if market.sf_per_capita_3mi < 7.0 else "Oversupplied")
-        col2.metric("Market Balance", market.balance_tier_3mi)
+        col2.metric("Market Balance", market.balance_tier_3mi.title())
         col3.metric("Saturation Score", f"{market.saturation_score}/100",
                    delta="Lower is better")
         col4.metric("Supply Gap", f"{market.supply_gap_sf:,} SF" if market.supply_gap_sf < 0 else f"+{market.supply_gap_sf:,} SF",
                    delta="Undersupplied" if market.supply_gap_sf < 0 else "Oversupplied")
 
         if market.balance_tier_3mi == "UNDERSUPPLIED":
-            st.success("✅ **Good Opportunity:** Market is undersupplied - favorable for new development")
+            st.success("✅ **Good Opportunity:** Market is Undersupplied - favorable for new development")
         elif market.balance_tier_3mi == "BALANCED":
             st.info("ℹ️ **Moderate Opportunity:** Market is balanced - carefully evaluate competitive positioning")
         else:
@@ -1054,47 +1062,56 @@ elif page == "💰 7-Year Operating Model":
     st.header("Financial Underwriting & 7-Year Projection")
     # Pull property data from Market Intel if available
     property_address = st.session_state.property_data.get('address', '')
-    st.markdown("### 🏢 Property Inputs")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        property_name = st.text_input("Property Name", value=st.session_state.property_data.get('name', ''),
-            placeholder="e.g. Allspace - Site A")
-        total_sf = st.number_input("Total NRA (SF)", value=105807, step=1000,
-            help="Net Rentable Area")
-    with col2:
-        address_input = st.text_input("Address", value=property_address,
-            placeholder="123 Main St, City, ST")
-        total_units = st.number_input("Total Units", value=684, step=10)
-    with col3:
-        start_date = st.date_input("Projection Start", value=datetime(2026, 1, 31))
-    # Infer starting rate from competitor data if available
-    default_rate = 17.79
-    if st.session_state.all_competitors:
-        # Extract rates from competitors (simplified - could be more sophisticated)
-        comp_rates = [float(c['Rate'].replace('$','').replace(',','')) for c in st.session_state.all_competitors
-            if c.get('Rate') and c['Rate'] != 'Call for Rate' and '$' in str(c['Rate'])]
-        if comp_rates:
-            default_rate = sum(comp_rates) / len(comp_rates) / 100 * 12 # Convert monthly to annual $/SF
-    starting_rate = st.number_input("Starting Rate ($/SF/yr)", value=default_rate, step=0.5,
-        help="Annual rental rate per square foot")
-    st.markdown("---")
-    st.markdown("### 💰 Financial Assumptions")
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        land_cost = st.number_input("Land Cost ($)", value=2500000, step=100000)
-        construction_psf = st.number_input("Construction ($/SF)", value=65, step=5)
-    with col2:
-        stabilized_occ = st.slider("Stabilized Occ %", 80, 95, 90)
-        months_to_stab = st.number_input("Months to Stabilization", value=24, step=6,
-            help="How long to reach stabilized occupancy")
-    with col3:
-        rate_growth = st.slider("Annual Rate Growth %", 2.0, 6.0, 4.0, 0.5) / 100
-        ltv = st.slider("LTV %", 50, 80, 70) / 100
-    with col4:
-        interest_rate = st.slider("Interest Rate %", 4.0, 8.0, 6.25, 0.25) / 100
-        loan_term = st.number_input("Loan Term (yrs)", value=30, step=5)
-    total_cost = land_cost + (construction_psf * total_sf)
-    loan_amount = total_cost * ltv
+    # Soft Card for Inputs
+    input_card, = st.columns(1)
+    with input_card:
+        st.markdown("### 🏢 Property Inputs")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            property_name = st.text_input("Property Name", value=st.session_state.property_data.get('name', ''),
+                placeholder="e.g. Allspace - Site A")
+            total_sf = st.number_input("Total NRA (SF)", value=105807, step=1000,
+                help="Net Rentable Area")
+        with col2:
+            address_input = st.text_input("Address", value=property_address,
+                placeholder="123 Main St, City, ST")
+            total_units = st.number_input("Total Units", value=684, step=10)
+        with col3:
+            start_date = st.date_input("Projection Start", value=datetime(2026, 1, 31))
+        # Infer starting rate from competitor data if available
+        default_rate = 17.79
+        if st.session_state.all_competitors:
+            # Extract rates from competitors (simplified - could be more sophisticated)
+            comp_rates = [float(c['Rate'].replace('$','').replace(',','')) for c in st.session_state.all_competitors
+                if c.get('Rate') and c['Rate'] != 'Call for Rate' and '$' in str(c['Rate'])]
+            if comp_rates:
+                default_rate = sum(comp_rates) / len(comp_rates) / 100 * 12 # Convert monthly to annual $/SF
+        starting_rate = st.number_input("Starting Rate ($/SF/yr)", value=default_rate, step=0.5,
+            help="Annual rental rate per square foot")
+        st.markdown("---")
+        st.markdown("### 💰 Financial Assumptions")
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            # Land Cost Input (Comma-Inside-Box)
+            land_cost_input = st.text_input("Land Cost ($)", value="2,500,000")
+            try:
+                land_cost = float(land_cost_input.replace(",", "").replace("$", ""))
+            except ValueError:
+                land_cost = 0.0
+            
+            construction_psf = st.number_input("Construction ($/SF)", value=65, step=5)
+        with col2:
+            stabilized_occ = st.slider("Stabilized Occ %", 80, 95, 90)
+            months_to_stab = st.number_input("Months to Stabilization", value=24, step=6,
+                help="How long to reach stabilized occupancy")
+        with col3:
+            rate_growth = st.slider("Annual Rate Growth %", 2.0, 6.0, 4.0, 0.5) / 100
+            ltv = st.slider("LTV %", 50, 80, 70) / 100
+        with col4:
+            interest_rate = st.slider("Interest Rate %", 4.0, 8.0, 6.25, 0.25) / 100
+            loan_term = st.number_input("Loan Term (yrs)", value=30, step=5)
+        total_cost = land_cost + (construction_psf * total_sf)
+        loan_amount = total_cost * ltv
     st.markdown("---")
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Development Cost", f"${total_cost:,.0f}")
@@ -1139,6 +1156,8 @@ elif page == "💰 7-Year Operating Model":
                     purchase_price,
                     equity_contribution
                 )
+                # Label Consistency: Rename index to Year 1, Year 2...
+                annual_summary.index = [f"Year {i}" for i in range(1, len(annual_summary) + 1)]
                 # Store in session state
                 st.session_state.financial_inputs = {
                     "projection_monthly": projection_df,
@@ -1153,11 +1172,14 @@ elif page == "💰 7-Year Operating Model":
                     'total_units': total_units
                 }
                 # Render modern 7-year projection display
-                render_7year_projection(
-                    annual_summary=annual_summary,
-                    monthly_projection=projection_df,
-                    property_info=property_info
-                )
+                # Chart Container (Soft Card)
+                chart_col, = st.columns(1)
+                with chart_col:
+                    render_7year_projection(
+                        annual_summary=annual_summary,
+                        monthly_projection=projection_df,
+                        property_info=property_info
+                    )
             except Exception as e:
                 st.error(f"Error generating projection: {str(e)}")
                 import traceback
@@ -1198,7 +1220,12 @@ elif page == "🤖 AI Feasibility Report":
     with col2:
         proposed_nrsf = st.number_input("Proposed NRSF", value=60000, step=5000,
             help="Net Rentable Square Feet")
-        land_cost = st.number_input("Land Cost ($)", value=800000, step=50000)
+        # Land Cost Input (Comma-Inside-Box)
+        land_cost_input = st.text_input("Land Cost ($)", value="800,000")
+        try:
+            land_cost = float(land_cost_input.replace(",", "").replace("$", ""))
+        except ValueError:
+            land_cost = 0.0
 
     # Advanced Options
     with st.expander("⚙️ Advanced Configuration", expanded=False):
@@ -1276,7 +1303,7 @@ elif page == "🤖 AI Feasibility Report":
     with col1:
         st.metric("Site Score", "83/100", delta="Good")
     with col2:
-        st.metric("Market Balance", "UNDERSUPPLIED", delta="Opportunity")
+        st.metric("Market Balance", "Undersupplied", delta="Opportunity")
     with col3:
         st.metric("Cap Rate", "6.43%", delta="Fair")
     with col4:
