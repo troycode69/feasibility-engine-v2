@@ -59,13 +59,21 @@ class TractIQCache:
         """Generate normalized market identifier"""
         import re
 
-        # Normalize ZIP+4 codes to just 5 digits (e.g., "37211-3104" -> "37211")
         market_id = market_name.lower().strip()
+
+        # Remove country suffixes (", United States", ", USA", etc.)
+        market_id = re.sub(r',?\s*(united states|usa|us)$', '', market_id, flags=re.IGNORECASE)
+
+        # Normalize ZIP+4 codes to just 5 digits (e.g., "37211-3104" -> "37211")
         market_id = re.sub(r'(\d{5})-\d{4}', r'\1', market_id)
 
         # Remove special chars (except spaces which will become underscores)
         market_id = ''.join(c if c.isalnum() or c == ' ' else '' for c in market_id)
         market_id = market_id.replace(' ', '_')
+
+        # Remove trailing underscores
+        market_id = market_id.rstrip('_')
+
         return market_id
 
     def _standardize_rate_keys(self, comp: Dict) -> Dict:
