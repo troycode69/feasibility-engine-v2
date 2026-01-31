@@ -184,6 +184,10 @@ class TractIQCache:
         market_metrics = {}
         demographics = {}
         sf_per_capita_analysis = {}
+        market_supply = {}
+        commercial_developments = []
+        housing_developments = {}
+        pipeline_summary = {}
 
         for pdf_name, ext_data in pdf_extractions.items():
             # Collect and deduplicate competitors
@@ -235,6 +239,22 @@ class TractIQCache:
             # Collect SF per capita analysis
             if ext_data.get('sf_per_capita_analysis'):
                 sf_per_capita_analysis.update(ext_data['sf_per_capita_analysis'])
+
+            # Collect market supply data
+            if ext_data.get('market_supply'):
+                market_supply.update(ext_data['market_supply'])
+
+            # Collect commercial developments
+            if ext_data.get('commercial_developments'):
+                commercial_developments.extend(ext_data['commercial_developments'])
+
+            # Collect housing developments
+            if ext_data.get('housing_developments'):
+                housing_developments.update(ext_data.get('housing_summary', {}))
+
+            # Collect pipeline summary
+            if ext_data.get('pipeline_summary'):
+                pipeline_summary.update(ext_data['pipeline_summary'])
 
         # Calculate SF per capita if we have SF and population data
         if sf_per_capita_analysis and demographics:
@@ -300,7 +320,10 @@ class TractIQCache:
             "unit_mix": unit_mix_data,
             "market_metrics": market_metrics,
             "demographics": demographics,
-            "sf_per_capita_analysis": sf_per_capita_analysis
+            "sf_per_capita_analysis": sf_per_capita_analysis,
+            "market_supply": market_supply,
+            "commercial_developments": commercial_developments,
+            "pipeline_summary": pipeline_summary
         }
 
     def get_market_data(self, market_identifier: str) -> Optional[Dict]:
