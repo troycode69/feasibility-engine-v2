@@ -1,45 +1,4 @@
 {
-  "markets": {
-    "market_data": {
-      "market_name": "Market Data",
-      "last_updated": "2026-01-21T20:59:16.878974",
-      "pdf_count": 4,
-      "competitor_count": 0,
-      "has_unit_mix": true,
-      "has_trends": true
-    },
-    "pa_19144": {
-      "market_name": "PA 19144",
-      "last_updated": "2026-01-21T21:13:57.383597",
-      "pdf_count": 4,
-      "competitor_count": 0,
-      "has_unit_mix": true,
-      "has_trends": true
-    },
-    "philadelphia": {
-      "market_name": "Philadelphia",
-      "last_updated": "2026-01-21T21:52:52.060034",
-      "pdf_count": 4,
-      "competitor_count": 0,
-      "has_unit_mix": true,
-      "has_trends": true
-    },
-    "tn_372113104": {
-      "market_name": "TN 37211-3104",
-      "last_updated": "2026-01-21T22:28:16.270283",
-      "pdf_count": 5,
-      "competitor_count": 78,
-      "has_unit_mix": true,
-      "has_trends": true
-    },
-    "1202_antioch_pike_nashville_tn_37211": {
-      "market_name": "1202 Antioch Pike, Nashville, TN 37211",
-      "last_updated": "2026-01-21T22:28:16.270283",
-      "pdf_count": 5,
-      "competitor_count": 78,
-      "has_unit_mix": true,
-      "has_trends": true
-    }
-  },
-  "last_updated": "2026-01-21T22:28:16.271762"
+  "markets": {},
+  "last_updated": null
 }

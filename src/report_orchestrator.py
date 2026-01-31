@@ -131,11 +131,36 @@ def get_scraper_competitors(address: str, radius_miles: float = 5.0) -> List[Dic
         List of competitor dicts
     """
     try:
-        # This would call your scraper - for now return empty list
-        # In production, this calls get_competitors_realtime()
-        return []
+        # Import the appropriate scraper based on environment
+        import os
+        import socket
+
+        # Detect cloud environment
+        env_runtime = os.getenv('STREAMLIT_RUNTIME_ENV')
+        hostname = os.getenv('HOSTNAME', 'NOT_SET')
+        socket_hostname = socket.gethostname()
+        users_exists = os.path.exists('/Users')
+
+        is_cloud = (
+            env_runtime == 'cloud' or
+            'streamlit' in hostname.lower() or
+            'streamlit' in socket_hostname.lower() or
+            not users_exists
+        )
+
+        # Load appropriate scraper
+        if is_cloud:
+            from src.scraper_cloud import get_competitors_realtime_cloud
+            competitors = get_competitors_realtime_cloud(address, radius_miles=radius_miles)
+        else:
+            from src.scraper import get_competitors_realtime
+            competitors = get_competitors_realtime(address, radius_miles=radius_miles)
+
+        return competitors if competitors else []
     except Exception as e:
         print(f"Scraper error: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 
@@ -220,14 +245,19 @@ def run_analytics(inputs: ProjectInputs) -> AnalyticsResults:
     print(f"      ✓ Population (3-mile): {demographics['population_3mi']:,}")
     print(f"      ✓ Median Income: ${demographics['median_income']:,}")
 
-    # Step 3: Load TractiQ data or run scraper
+    # Step 3: Load TractiQ data AND run scraper (merge both sources)
     print("[3/7] Loading market intelligence...")
     tractiq_data = load_tractiq_data(inputs.tractiq_market_id)
     if tractiq_data:
         print(f"      ✓ TractiQ data loaded: {tractiq_data.get('competitor_count', 0)} competitors")
     else:
-        print("      ℹ No TractiQ data - would run scraper in production")
-        results.scraper_competitors = []
+        print("      ℹ No TractiQ data available")
+
+    # Always run scraper to get additional competitors
+    print("      🔍 Running web scraper for additional competitors...")
+    scraper_results = get_scraper_competitors(inputs.site_address, radius_miles=5.0)
+    print(f"      ✓ Scraper found: {len(scraper_results)} competitors")
+    results.scraper_competitors = scraper_results
 
     # Step 4: Market supply/demand analysis
     print("[4/7] Analyzing market supply/demand...")

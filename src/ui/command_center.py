@@ -77,60 +77,16 @@ def render_command_center():
         total_contacts, total_props = get_crm_summary()
         
         # Custom Metric Display
-        m1, m2 = st.columns(2)
+        m1, m2, m3 = st.columns(3)
         with m1:
             st.markdown(f'<p class="hero-metric-label">Total Contacts</p><p class="hero-metric-value">{total_contacts}</p>', unsafe_allow_html=True)
         with m2:
             st.markdown(f'<p class="hero-metric-label">Properties</p><p class="hero-metric-value">{total_props}</p>', unsafe_allow_html=True)
+        with m3:
+            score = st.session_state.scorer.get_total_score()
+            st.markdown(f'<p class="hero-metric-label">Feasibility Score</p><p class="hero-metric-value">{score}/100</p>', unsafe_allow_html=True)
             
-    st.markdown('</div>', unsafe_allow_html=True) # End Top Dashboard Card
-
-    # Centered Hero Card for Feasibility Score
-    if "scorer" in st.session_state:
-        score = st.session_state.scorer.get_total_score()
-        scorecard = st.session_state.get("analysis_results", {}).site_scorecard if hasattr(st.session_state.get("analysis_results", {}), "site_scorecard") else None
-        
-        col_side, col_center, col_side2 = st.columns([1, 2, 1])
-        with col_center:
-            score_color = "#27A745" if score >= 70 else "#FFA500" if score >= 55 else "#D0021B"
-            
-            # Create Plotly Gauge
-            import plotly.graph_objects as go
-            fig = go.Figure(go.Indicator(
-                mode = "gauge+number",
-                value = score,
-                domain = {'x': [0, 1], 'y': [0, 1]},
-                title = {'text': "Live Feasibility Score", 'font': {'size': 18, 'color': "#0C2340", 'family': "Inter"}},
-                gauge = {
-                    'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "#0C2340"},
-                    'bar': {'color': score_color},
-                    'bgcolor': "white",
-                    'borderwidth': 2,
-                    'bordercolor': "#E2E8F0",
-                    'steps': [
-                        {'range': [0, 55], 'color': 'rgba(208, 2, 27, 0.1)'},
-                        {'range': [55, 70], 'color': 'rgba(255, 165, 0, 0.1)'},
-                        {'range': [70, 100], 'color': 'rgba(39, 167, 69, 0.1)'}
-                    ],
-                }
-            ))
-            fig.update_layout(
-                height=220, 
-                margin=dict(l=20, r=20, t=0, b=0), 
-                paper_bgcolor="rgba(0,0,0,0)", 
-                font={'color': "#0C2340", 'family': "Inter"}
-            )
-            
-            st.markdown('<div class="hero-card">', unsafe_allow_html=True)
-            st.plotly_chart(fig, use_container_width=True)
-            if scorecard:
-                 st.markdown(f"""
-                <div style="text-align: center; margin-top: -30px;">
-                    <h2 style="color: {score_color}; margin-bottom: 5px;">{scorecard.tier}</h2>
-                    <p style="color: #64748B; font-size: 1rem;">{scorecard.recommendation}</p>
-                </div>
-                """, unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True) # End Hero Card
 
     # === SMART LEAD LISTS ===
     st.markdown("### 📋 Smart Lead Lists")

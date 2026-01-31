@@ -6,11 +6,12 @@ from datetime import datetime
 import re
 
 # VERSION MARKER - Force Streamlit Cloud to update
-APP_VERSION = "2.4.0-PRODUCTION"
+APP_VERSION = "2.5.0-PRODUCTION"
 
 # CRITICAL: Use st.write() early to verify code is deployed
+import streamlit as st
+st.set_page_config(page_title="Storage Feasibility Engine", layout="wide")
 # Debug mode disabled for production
-# st.set_page_config is called further down with icon and title
 
 # Add src to path for local imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -135,6 +136,7 @@ try:
 except ImportError as e:
     print(f"Command Center UI unavailable: {e}")
     render_command_center = None
+
 # === TRACTIQ DATA INTEGRATION ===
 def load_tractiq_data():
     """
@@ -224,7 +226,7 @@ def merge_competitor_data(scraper_results):
     return merged
 
 # Set page config with logo as icon
-st.set_page_config(page_title="StorSageHQ", page_icon="assets/logo_transparent.png", layout="wide")
+st.set_page_config(page_title="StorSageHQ", page_icon="assets/logo.png", layout="wide")
 
 # === STORSAGE HQ BRANDING (THEME LOCKED) ===
 
@@ -257,12 +259,17 @@ st.markdown("""
 <style>
     /* --- 1. GLOBAL RESET & TYPOGRAPHY --- */
     .stApp {
-        background-color: #F4F6F8 !important; /* Light Gray Background */
-        color: #0C2340 !important;
+        background-color: #FFFFFF !important; /* White Background - easier to read */
+        color: #1A1A1A !important; /* Dark text for readability */
         font-family: 'Inter', sans-serif !important;
         padding-top: 80px !important; /* Offset for Fixed SaaS Header */
     }
-    
+
+    /* Force all text to be dark */
+    .stApp p, .stApp span, .stApp div, .stApp label, .stApp h1, .stApp h2, .stApp h3 {
+        color: #1A1A1A !important;
+    }
+
     /* --- 2. FIXED SAAS HEADER --- */
     /* Target the container that wraps the navigation radio group */
     div[data-testid="stVerticalBlock"] > div.element-container:has(div[role="radiogroup"]) {
@@ -280,7 +287,7 @@ st.markdown("""
         padding: 0 !important;
         margin: 0 !important;
     }
-    
+
     /* Radio Group - Strict Single Row Flex */
     div[role="radiogroup"] {
         display: flex !important;
@@ -293,7 +300,7 @@ st.markdown("""
         border: none !important;
         width: auto !important;
     }
-    
+
     /* Hide ugly radio circles */
     div[role="radiogroup"] input[type="radio"] {
         display: none !important;
@@ -301,7 +308,7 @@ st.markdown("""
     div[role="radiogroup"] label > div:first-child {
         display: none !important;
     }
-    
+
     /* Nav Tabs Styling */
     div[role="radiogroup"] label {
         flex: 0 1 auto !important; /* Do not stretch */
@@ -314,7 +321,7 @@ st.markdown("""
         transition: all 0.2s ease !important;
         cursor: pointer !important;
     }
-    
+
     /* Tab Text */
     div[role="radiogroup"] p {
         color: #FFFFFF !important;
@@ -322,13 +329,13 @@ st.markdown("""
         font-size: 15px !important;
         margin: 0 !important;
     }
-    
+
     /* Active State Highlight */
     div[role="radiogroup"] label:has(div[data-checked="true"]) {
         background-color: #1A3A5E !important; /* Lighter Navy */
         border-bottom: 2px solid #4A90E2 !important; /* Accent Blue */
     }
-    
+
     /* Hover State */
     div[role="radiogroup"] label:hover {
         background-color: rgba(255,255,255,0.05) !important;
@@ -340,10 +347,6 @@ st.markdown("""
     }
     [data-testid="stSidebar"] * {
         color: #FFFFFF !important;
-    }
-    /* Logo Transparency Hack */
-    [data-testid="stSidebar"] img {
-        mix-blend-mode: multiply !important;
     }
 
     /* --- 4. HERO SECTION (Juniper Square) --- */
@@ -377,7 +380,7 @@ st.markdown("""
     }
     [data-testid="stDataFrame"] div[role="columnheader"] {
         background-color: #F8FAFC !important;
-        color: #0C2340 !important;
+        color: #1A1A1A !important; /* Dark header text */
         font-weight: 600 !important;
         text-transform: uppercase !important;
         font-size: 0.75rem !important;
@@ -386,32 +389,30 @@ st.markdown("""
     [data-testid="stDataFrame"] div[role="row"] {
         background-color: #FFFFFF !important;
         border-bottom: 1px solid #F1F5F9 !important;
-        color: #334155 !important;
+        color: #1A1A1A !important; /* Dark row text */
     }
 
     /* --- 6. INPUT CARDS (TryCactus) --- */
-    /* Only apply card styling to columns that contain inputs or metrics */
-    div[data-testid="stColumn"]:has(div[data-testid="stTextInput"], div[data-testid="stNumberInput"], div[data-testid="stTextArea"], div[data-testid="metric-container"], .hero-card) {
+    div[data-testid="stColumn"] {
         background-color: #FFFFFF !important;
         border-radius: 16px !important;
         padding: 2rem !important;
         box-shadow: 0 10px 30px rgba(0,0,0,0.05) !important;
         border: none !important;
-        margin-bottom: 1rem !important;
     }
-
-    div[data-testid="stTextInput"] input, 
-    div[data-testid="stNumberInput"] input, 
+    div[data-testid="stTextInput"] input,
+    div[data-testid="stNumberInput"] input,
     div[data-testid="stTextArea"] textarea {
         background-color: #FFFFFF !important;
-        color: #0C2340 !important;
-        border: 1px solid #E2E8F0 !important;
+        color: #1A1A1A !important; /* Dark text in inputs */
+        border: 1px solid #D1D5DB !important;
         border-radius: 8px !important;
         padding: 10px !important;
     }
-    div[data-testid="stTextInput"] label, 
-    div[data-testid="stNumberInput"] label {
-         color: #0C2340 !important;
+    div[data-testid="stTextInput"] label,
+    div[data-testid="stNumberInput"] label,
+    div[data-testid="stMarkdown"] label {
+         color: #1A1A1A !important; /* Dark labels */
          font-weight: 600 !important;
     }
 
@@ -463,9 +464,8 @@ page = st.radio(
 
 # Sidebar - Cleaned up (Logo + TractIQ only)
 with st.sidebar:
-    # Sidebar Logo - Enforced Transparency
-    st.image("assets/logo_transparent.png", use_container_width=True)
-    st.sidebar.markdown("---")
+    st.image("assets/logo.png", use_container_width=True)
+    st.markdown("---")
     # TractIQ Cache Management
     st.markdown("### 💾 TractIQ Cache")
     from src.tractiq_cache import list_cached_markets, get_market_stats
@@ -572,17 +572,14 @@ if page == "📝 Project Inputs":
     if not use_default_financials:
         col1, col2 = st.columns(2)
         with col1:
-            # Land Cost Input (Comma-Inside-Box)
-            land_cost_input = st.text_input(
+            land_cost = st.number_input(
                 "Land Cost ($)",
-                value="750,000",
-                help="Purchase price of the land. Use commas."
+                min_value=0,
+                max_value=10000000,
+                value=750000,
+                step=50000,
+                help="Purchase price of the land"
             )
-            # Backend Logic: Strip commas for calculation
-            try:
-                land_cost = float(land_cost_input.replace(",", "").replace("$", ""))
-            except ValueError:
-                land_cost = 0.0
             loan_to_cost = st.slider(
                 "Loan-to-Cost Ratio (%)",
                 min_value=50,
@@ -621,20 +618,33 @@ if page == "📝 Project Inputs":
     st.markdown("### 📁 TractiQ Market Data (Optional)")
 
     # Check if we have cached data for this address
-    from src.tractiq_cache import get_cached_tractiq_data, get_market_stats
+    from src.tractiq_cache import get_cached_tractiq_data, get_market_stats, TractIQCache
 
     cached_data = None
     cached_stats = None
     if project_address:
-        cached_data = get_cached_tractiq_data(project_address)
+        # Get cached TractiQ data (use as-is from TractiQ reports)
+        cached_data = get_cached_tractiq_data(project_address, site_address=None, radius_miles=5.0)
         if cached_data:
-            cached_stats = get_market_stats(project_address)
+            # Calculate stats from data
+            total_competitors = sum(len(pdf.get('competitors', [])) for pdf in cached_data.values())
+
+            cached_stats = {
+                'total_competitors': total_competitors,
+                'data_sources': len(cached_data),
+                'last_updated': max(
+                    (pdf.get('extraction_date', pdf.get('cached_date', ''))
+                     for pdf in cached_data.values()),
+                    default=''
+                )
+            }
 
     # Show cached data status
     if cached_data and cached_stats:
-        st.success(f"✅ Found cached TractiQ data for this address!")
+        comp_count = cached_stats.get('total_competitors', 0)
+        st.success(f"✅ Found cached TractiQ data with {comp_count} competitors!")
         col1, col2, col3 = st.columns(3)
-        col1.metric("Cached Competitors", cached_stats.get('total_competitors', 0))
+        col1.metric("Competitors", comp_count)
         col2.metric("Data Sources", cached_stats.get('data_sources', 0))
         col3.metric("Last Updated", cached_stats.get('last_updated', 'Unknown')[:10] if cached_stats.get('last_updated') else 'Unknown')
 
@@ -642,7 +652,6 @@ if page == "📝 Project Inputs":
         if "tractiq_market_id" not in st.session_state or not st.session_state.tractiq_market_id:
             # Use the normalized market_id from the cache
             # The cache generates this by normalizing the address
-            from src.tractiq_cache import TractIQCache
             cache = TractIQCache()
             market_id = cache._generate_market_id(project_address)
             st.session_state.tractiq_market_id = market_id
@@ -782,7 +791,7 @@ if page == "📝 Project Inputs":
                 irr = f"{results.pro_forma.metrics.irr_10yr:.1f}%"
 
             col1.metric("Site Score", site_score)
-            col2.metric("Market Balance", market_balance.title())
+            col2.metric("Market Balance", market_balance)
             col3.metric("Cap Rate", cap_rate)
             col4.metric("IRR (10yr)", irr)
             st.success("✅ Data ready - navigate to other pages to view detailed analysis")
@@ -824,30 +833,21 @@ elif page == "📊 Market Intel":
     st.markdown("---")
 
     # Display 100-point site score
+    st.markdown("### 🎯 Site Feasibility Score")
     if hasattr(results, 'site_scorecard') and results.site_scorecard:
         scorecard = results.site_scorecard
 
-        # Centered Hero Card for Score
-        col_side, col_center, col_side2 = st.columns([1, 3, 1])
-        with col_center:
-            # Prepare data for the new Glassmorphism component
-            score_data = {
-                'score': scorecard.total_score,
-                'decision': scorecard.recommendation,
-                'confidence': scorecard.confidence,
-                'breakdown': {
-                    'Demographics': {'score': scorecard.demographics.total_score, 'max': scorecard.demographics.max_score},
-                    'Supply/Demand': {'score': scorecard.supply_demand.total_score, 'max': scorecard.supply_demand.max_score},
-                    'Site Attributes': {'score': scorecard.site_attributes.total_score, 'max': scorecard.site_attributes.max_score},
-                    'Competitive': {'score': scorecard.competitive_positioning.total_score, 'max': scorecard.competitive_positioning.max_score},
-                    'Economic': {'score': scorecard.economic_market.total_score, 'max': scorecard.economic_market.max_score}
-                },
-                'key_strengths': [], # Will populating this requires simple logic, leaving empty for now to match exact scope of visual refactor
-                'key_risks': []
-            }
-            
-            # Use the new component
-            render_feasibility_score(score_data)
+        # Big score display
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            score_color = "#4A90E2" if scorecard.total_score >= 70 else "#FFA500" if scorecard.total_score >= 55 else "#FF4444"
+            st.markdown(f"""
+            <div style="background-color: {score_color}; padding: 30px; border-radius: 15px; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 60px;">{scorecard.total_score}/100</h1>
+                <p style="color: white; margin: 10px 0 0 0; font-size: 24px;">{scorecard.tier}</p>
+                <p style="color: white; margin: 5px 0 0 0; font-size: 18px;">{scorecard.recommendation}</p>
+            </div>
+            """, unsafe_allow_html=True)
 
         st.markdown("---")
 
@@ -906,14 +906,14 @@ elif page == "📊 Market Intel":
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("SF per Capita", f"{market.sf_per_capita_3mi:.2f}",
                    delta="Undersupplied" if market.sf_per_capita_3mi < 5.5 else "Balanced" if market.sf_per_capita_3mi < 7.0 else "Oversupplied")
-        col2.metric("Market Balance", market.balance_tier_3mi.title())
+        col2.metric("Market Balance", market.balance_tier_3mi)
         col3.metric("Saturation Score", f"{market.saturation_score}/100",
                    delta="Lower is better")
         col4.metric("Supply Gap", f"{market.supply_gap_sf:,} SF" if market.supply_gap_sf < 0 else f"+{market.supply_gap_sf:,} SF",
                    delta="Undersupplied" if market.supply_gap_sf < 0 else "Oversupplied")
 
         if market.balance_tier_3mi == "UNDERSUPPLIED":
-            st.success("✅ **Good Opportunity:** Market is Undersupplied - favorable for new development")
+            st.success("✅ **Good Opportunity:** Market is undersupplied - favorable for new development")
         elif market.balance_tier_3mi == "BALANCED":
             st.info("ℹ️ **Moderate Opportunity:** Market is balanced - carefully evaluate competitive positioning")
         else:
@@ -934,25 +934,15 @@ elif page == "📊 Market Intel":
         if st.session_state.get("tractiq_market_id"):
             project_address = st.session_state.property_data.get('address', '')
             if project_address:
-                tractiq_data = get_cached_tractiq_data(project_address)
+                # Get cached data (use TractiQ data as-is)
+                tractiq_data = get_cached_tractiq_data(
+                    st.session_state.tractiq_market_id,
+                    site_address=None,
+                    radius_miles=5.0
+                )
 
         # Get scraper competitors
         scraper_competitors = results.scraper_competitors if hasattr(results, 'scraper_competitors') else []
-
-        # Debug: Show raw data structure
-        with st.expander("🔍 Debug: Data Sources"):
-            st.write(f"**TractiQ data keys:** {list(tractiq_data.keys()) if tractiq_data else 'None'}")
-            if tractiq_data:
-                for key, val in tractiq_data.items():
-                    st.write(f"**{key}:**")
-                    comps = val.get('competitors', [])
-                    st.write(f"  - Competitors count: {len(comps)}")
-                    if comps:
-                        st.write(f"  - First competitor keys: {list(comps[0].keys())}")
-                        st.write(f"  - First competitor sample: {comps[0]}")
-            st.write(f"**Scraper competitors count:** {len(scraper_competitors)}")
-            if scraper_competitors:
-                st.write(f"**First scraper competitor:** {scraper_competitors[0]}")
 
         # Merge the data
         merged_rates = merge_competitor_rates(tractiq_data, scraper_competitors)
@@ -1092,13 +1082,7 @@ elif page == "💰 7-Year Operating Model":
         st.markdown("### 💰 Financial Assumptions")
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            # Land Cost Input (Comma-Inside-Box)
-            land_cost_input = st.text_input("Land Cost ($)", value="2,500,000")
-            try:
-                land_cost = float(land_cost_input.replace(",", "").replace("$", ""))
-            except ValueError:
-                land_cost = 0.0
-            
+            land_cost = st.number_input("Land Cost ($)", value=2500000, step=100000)
             construction_psf = st.number_input("Construction ($/SF)", value=65, step=5)
         with col2:
             stabilized_occ = st.slider("Stabilized Occ %", 80, 95, 90)
@@ -1156,8 +1140,6 @@ elif page == "💰 7-Year Operating Model":
                     purchase_price,
                     equity_contribution
                 )
-                # Label Consistency: Rename index to Year 1, Year 2...
-                annual_summary.index = [f"Year {i}" for i in range(1, len(annual_summary) + 1)]
                 # Store in session state
                 st.session_state.financial_inputs = {
                     "projection_monthly": projection_df,
@@ -1220,12 +1202,7 @@ elif page == "🤖 AI Feasibility Report":
     with col2:
         proposed_nrsf = st.number_input("Proposed NRSF", value=60000, step=5000,
             help="Net Rentable Square Feet")
-        # Land Cost Input (Comma-Inside-Box)
-        land_cost_input = st.text_input("Land Cost ($)", value="800,000")
-        try:
-            land_cost = float(land_cost_input.replace(",", "").replace("$", ""))
-        except ValueError:
-            land_cost = 0.0
+        land_cost = st.number_input("Land Cost ($)", value=800000, step=50000)
 
     # Advanced Options
     with st.expander("⚙️ Advanced Configuration", expanded=False):
@@ -1303,7 +1280,7 @@ elif page == "🤖 AI Feasibility Report":
     with col1:
         st.metric("Site Score", "83/100", delta="Good")
     with col2:
-        st.metric("Market Balance", "Undersupplied", delta="Opportunity")
+        st.metric("Market Balance", "UNDERSUPPLIED", delta="Opportunity")
     with col3:
         st.metric("Cap Rate", "6.43%", delta="Fair")
     with col4:
