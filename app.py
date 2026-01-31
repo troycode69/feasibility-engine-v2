@@ -642,10 +642,9 @@ if page == "📝 Project Inputs":
         market_id = cache._generate_market_id(project_address)
         full_market_data = cache.get_market_data(project_address)
 
-        # Debug: Show what we're looking for
-        print(f"[DEBUG] Address entered: '{project_address}'")
-        print(f"[DEBUG] Generated market_id: '{market_id}'")
-        print(f"[DEBUG] Data found: {full_market_data is not None}")
+        # Debug: Show what we're looking for (visible in UI)
+        with st.expander("🔍 Debug: Cache Lookup", expanded=False):
+            st.code(f"Address entered: '{project_address}'\nGenerated market_id: '{market_id}'\nData found: {full_market_data is not None}")
         if full_market_data:
             agg_data = full_market_data.get('aggregated_data', {})
             market_supply = agg_data.get('market_supply', {})
