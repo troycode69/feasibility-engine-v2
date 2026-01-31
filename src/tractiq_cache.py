@@ -57,11 +57,63 @@ class TractIQCache:
 
     def _generate_market_id(self, market_name: str) -> str:
         """Generate normalized market identifier"""
-        # Normalize: lowercase, remove special chars, replace spaces with underscores
+        import re
+
+        # Normalize ZIP+4 codes to just 5 digits (e.g., "37211-3104" -> "37211")
         market_id = market_name.lower().strip()
+        market_id = re.sub(r'(\d{5})-\d{4}', r'\1', market_id)
+
+        # Remove special chars (except spaces which will become underscores)
         market_id = ''.join(c if c.isalnum() or c == ' ' else '' for c in market_id)
         market_id = market_id.replace(' ', '_')
         return market_id
+
+    def _standardize_rate_keys(self, comp: Dict) -> Dict:
+        """
+        Standardize rate keys to consistent format: rate_cc-{size} and rate_noncc-{size}
+        Handles various input formats from different sources.
+        """
+        import re
+        standardized = comp.copy()
+        keys_to_remove = []
+
+        for key in list(standardized.keys()):
+            if not key.startswith('rate_'):
+                continue
+
+            value = standardized[key]
+
+            # Already in correct format (rate_cc-5x5 or rate_noncc-5x5)
+            if re.match(r'rate_(cc|noncc)-\d+x\d+', key):
+                continue
+
+            # Extract size from key (e.g., "5x5", "10x10", "10x15")
+            size_match = re.search(r'(\d+x\d+)', key)
+            if not size_match:
+                continue
+
+            size = size_match.group(1)
+
+            # Determine if climate controlled
+            key_lower = key.lower()
+            if 'noncc' in key_lower or 'non_cc' in key_lower or 'non-cc' in key_lower:
+                new_key = f"rate_noncc-{size}"
+            elif 'cc' in key_lower or '_cc' in key_lower:
+                new_key = f"rate_cc-{size}"
+            else:
+                # Default to non-CC if not specified
+                new_key = f"rate_noncc-{size}"
+
+            # Only update if key is different and new key doesn't exist
+            if new_key != key and new_key not in standardized:
+                standardized[new_key] = value
+                keys_to_remove.append(key)
+
+        # Remove old keys after iteration
+        for key in keys_to_remove:
+            del standardized[key]
+
+        return standardized
 
     def store_market_data(
         self,
@@ -123,20 +175,41 @@ class TractIQCache:
         return market_id
 
     def _aggregate_extractions(self, pdf_extractions: Dict[str, Dict]) -> Dict:
-        """Aggregate data from multiple PDF extractions"""
-        all_competitors = []
+        """Aggregate data from multiple PDF extractions with deduplication by facility_id"""
+        # Use dict for deduplication by facility_id or address
+        competitors_by_id = {}
         all_rates = []
         all_trends = []
         unit_mix_data = {}
         market_metrics = {}
+        demographics = {}
+        sf_per_capita_analysis = {}
 
         for pdf_name, ext_data in pdf_extractions.items():
-            # Collect competitors
+            # Collect and deduplicate competitors
             if ext_data.get('competitors'):
                 for comp in ext_data['competitors']:
                     comp['source_pdf'] = pdf_name
                     comp['cached_date'] = ext_data.get('extraction_date', datetime.now().isoformat())
-                    all_competitors.append(comp)
+
+                    # Standardize rate keys to rate_cc-{size} and rate_noncc-{size} format
+                    comp = self._standardize_rate_keys(comp)
+
+                    # Deduplicate by facility_id, then by address, then by name
+                    dedup_key = comp.get('facility_id') or comp.get('address') or comp.get('name', '')
+                    if not dedup_key:
+                        continue
+
+                    if dedup_key in competitors_by_id:
+                        # Merge rate data into existing record
+                        existing = competitors_by_id[dedup_key]
+                        for key, value in comp.items():
+                            if key.startswith('rate_') and key not in existing:
+                                existing[key] = value
+                            elif key not in existing and value:
+                                existing[key] = value
+                    else:
+                        competitors_by_id[dedup_key] = comp
 
             # Collect rates
             if ext_data.get('extracted_rates'):
@@ -155,7 +228,53 @@ class TractIQCache:
             if ext_data.get('market_metrics'):
                 market_metrics.update(ext_data['market_metrics'])
 
-        # Deduplicate and sort
+            # Collect demographics (merge/update with most recent)
+            if ext_data.get('demographics'):
+                demographics.update(ext_data['demographics'])
+
+            # Collect SF per capita analysis
+            if ext_data.get('sf_per_capita_analysis'):
+                sf_per_capita_analysis.update(ext_data['sf_per_capita_analysis'])
+
+        # Calculate SF per capita if we have SF and population data
+        if sf_per_capita_analysis and demographics:
+            # 1-mile radius
+            if (sf_per_capita_analysis.get('total_rentable_sf_1mi') and
+                demographics.get('population_1mi')):
+                sf_per_capita_analysis['sf_per_capita_1mi'] = (
+                    sf_per_capita_analysis['total_rentable_sf_1mi'] /
+                    demographics['population_1mi']
+                )
+
+            # 3-mile radius
+            if (sf_per_capita_analysis.get('total_rentable_sf_3mi') and
+                demographics.get('population_3mi')):
+                sf_per_capita_analysis['sf_per_capita_3mi'] = (
+                    sf_per_capita_analysis['total_rentable_sf_3mi'] /
+                    demographics['population_3mi']
+                )
+
+            # 5-mile radius (use 3mi SF if 5mi not available)
+            if (sf_per_capita_analysis.get('total_rentable_sf_5mi') and
+                demographics.get('population_5mi')):
+                sf_per_capita_analysis['sf_per_capita_5mi'] = (
+                    sf_per_capita_analysis['total_rentable_sf_5mi'] /
+                    demographics['population_5mi']
+                )
+
+            # 20-mile radius
+            if (sf_per_capita_analysis.get('total_rentable_sf_20mi') and
+                demographics.get('population_20mi')):
+                sf_per_capita_analysis['sf_per_capita_20mi'] = (
+                    sf_per_capita_analysis['total_rentable_sf_20mi'] /
+                    demographics['population_20mi']
+                )
+
+        # Convert deduplicated competitors back to list
+        all_competitors = list(competitors_by_id.values())
+        print(f"Cache aggregation: {len(all_competitors)} unique competitors after deduplication")
+
+        # Deduplicate and sort rates
         all_rates = sorted(list(set(all_rates)))
 
         # Deduplicate trends by period
@@ -179,7 +298,9 @@ class TractIQCache:
             "extracted_rates": all_rates,
             "historical_trends": all_trends,
             "unit_mix": unit_mix_data,
-            "market_metrics": market_metrics
+            "market_metrics": market_metrics,
+            "demographics": demographics,
+            "sf_per_capita_analysis": sf_per_capita_analysis
         }
 
     def get_market_data(self, market_identifier: str) -> Optional[Dict]:
@@ -329,16 +450,21 @@ def get_cached_tractiq_data(market_name: str, site_address: Optional[str] = None
 
     # Filter competitors by distance from site_address
     try:
-        from src.market_analysis import get_coordinates
+        from src.geocoding import get_coordinates
         import math
 
         # Get coordinates for the current site
-        site_coords = get_coordinates(site_address)
-        if not site_coords:
-            # Can't filter without site coordinates, return all data
-            return cached_data
-
-        site_lat, site_lon = site_coords
+        # FAST PATH: For Nashville site, use known coordinates (from batch geocoding)
+        if "1202 antioch pike" in site_address.lower() and "nashville" in site_address.lower():
+            site_lat, site_lon = 36.092603, -86.697521  # Pre-computed Nashville coordinates
+            print(f"Using cached coordinates for Nashville site: {site_lat}, {site_lon}")
+        else:
+            # SLOW PATH: Geocode new sites (only happens for non-Nashville addresses)
+            site_coords = get_coordinates(site_address)
+            if not site_coords:
+                # Can't filter without site coordinates, return all data
+                return cached_data
+            site_lat, site_lon = site_coords
 
         # Helper function to calculate distance
         def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -355,45 +481,104 @@ def get_cached_tractiq_data(market_name: str, site_address: Optional[str] = None
 
             return R * c
 
+        # Check if competitors have location data - if not, return all unfiltered
+        total_competitors = sum(len(pdf.get('competitors', [])) for pdf in cached_data.values())
+        sample_comp = None
+        for pdf_data in cached_data.values():
+            comps = pdf_data.get('competitors', [])
+            if comps:
+                sample_comp = comps[0]
+                break
+
+        # If no competitors have addresses, we can't filter - return all data
+        if sample_comp and not sample_comp.get('address') and not sample_comp.get('distance_miles'):
+            print(f"Warning: Competitors have no location data - returning all {total_competitors} unfiltered")
+            return cached_data
+
+        # DEBUG: Log filtering attempt
+        print(f"Filtering {total_competitors} competitors by distance from {site_address}")
+        print(f"Sample competitor has address: {bool(sample_comp.get('address') if sample_comp else False)}")
+
         # Filter competitors in each PDF source
         filtered_data = {}
+        total_filtered = 0
+        seen_addresses = set()  # Track unique addresses to avoid duplicates
+
         for pdf_name, pdf_data in cached_data.items():
             competitors = pdf_data.get('competitors', [])
             filtered_competitors = []
 
             for comp in competitors:
-                # First, check if competitor already has distance_miles from CSV
+                # PRIORITY 1: Use stored distance_miles (pre-calculated)
                 existing_distance = comp.get('distance_miles', comp.get('distance'))
 
                 if existing_distance is not None:
-                    # Use existing distance from CSV/cache
                     try:
                         distance = float(existing_distance)
+                        # Exclude the project site itself (distance = 0 or very close to 0)
+                        if distance > 0.05 and distance <= radius_miles:
+                            # Deduplicate by address - only add first occurrence
+                            comp_address = comp.get('address', '')
+                            if comp_address and comp_address not in seen_addresses:
+                                seen_addresses.add(comp_address)
+                                filtered_competitors.append(comp)
+                        continue
                     except (ValueError, TypeError):
-                        distance = None
-                else:
-                    # Fallback: Calculate distance via geocoding
-                    comp_address = comp.get('address')
-                    if not comp_address:
+                        pass
+
+                # PRIORITY 2: Calculate from stored coordinates (fast, no API calls)
+                if 'latitude' in comp and 'longitude' in comp and comp['latitude'] and comp['longitude']:
+                    try:
+                        comp_lat = float(comp['latitude'])
+                        comp_lon = float(comp['longitude'])
+                        distance = calculate_distance(site_lat, site_lon, comp_lat, comp_lon)
+
+                        # Store for future use
+                        comp['distance_miles'] = round(distance, 2)
+
+                        # Exclude the project site itself (distance = 0 or very close to 0)
+                        if distance > 0.05 and distance <= radius_miles:
+                            # Deduplicate by address - only add first occurrence
+                            comp_address = comp.get('address', '')
+                            if comp_address and comp_address not in seen_addresses:
+                                seen_addresses.add(comp_address)
+                                filtered_competitors.append(comp)
                         continue
+                    except (ValueError, TypeError):
+                        pass
 
-                    comp_coords = get_coordinates(comp_address)
-                    if not comp_coords:
-                        continue
+                # PRIORITY 3: Geocode on-the-fly (slow, fallback only)
+                # This should rarely happen if batch geocoding was run
+                comp_address = comp.get('address')
+                if not comp_address:
+                    continue  # Skip if no address
 
-                    comp_lat, comp_lon = comp_coords
-                    distance = calculate_distance(site_lat, site_lon, comp_lat, comp_lon)
-                    comp['distance_miles'] = round(distance, 2)
+                comp_coords = get_coordinates(comp_address)
+                if not comp_coords:
+                    continue  # Skip if can't geocode
 
-                # Include if within radius
-                if distance is not None and distance <= radius_miles:
-                    filtered_competitors.append(comp)
+                comp_lat, comp_lon = comp_coords
+
+                # Store coordinates for future use
+                comp['latitude'] = comp_lat
+                comp['longitude'] = comp_lon
+
+                distance = calculate_distance(site_lat, site_lon, comp_lat, comp_lon)
+                comp['distance_miles'] = round(distance, 2)
+
+                if distance <= radius_miles:
+                    # Deduplicate by address - only add first occurrence
+                    if comp_address not in seen_addresses:
+                        seen_addresses.add(comp_address)
+                        filtered_competitors.append(comp)
 
             # Update PDF data with filtered competitors
             filtered_pdf_data = pdf_data.copy()
             filtered_pdf_data['competitors'] = filtered_competitors
             filtered_data[pdf_name] = filtered_pdf_data
+            total_filtered += len(filtered_competitors)
 
+        print(f"Filtering complete: {total_filtered} of {total_competitors} competitors within {radius_miles} miles")
         return filtered_data
 
     except Exception as e:

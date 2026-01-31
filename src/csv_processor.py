@@ -86,36 +86,56 @@ def extract_csv_data(file) -> Dict:
 
 
 def extract_competitors_from_csv(rows: List[Dict], headers: Dict) -> List[Dict]:
-    """Extract competitor facility data from CSV rows."""
-    competitors = []
+    """Extract competitor facility data from CSV rows, deduplicating by Facility ID."""
+    # Use dict to deduplicate by facility_id - merge rate data for same facility
+    facilities_by_id = {}
 
     # Common TractIQ CSV column mappings (case-insensitive)
     name_keys = ['facility name', 'name', 'property name', 'facility', 'property', 'facilityid']
-    address_keys = ['address', 'street address', 'location', 'street', 'addr']
+    address_keys = ['address', 'street address', 'location', 'street', 'addr', 'full address']
     units_keys = ['units', 'unit count', 'total units', '# units', 'number of units']
     occupancy_keys = ['occupancy', 'physical occupancy', 'occ %', 'occupancy %', 'occupied %', 'aggregate']
-    nrsf_keys = ['nrsf', 'rentable sf', 'total sf', 'square feet', 'square ft', 'sq ft']
-    distance_keys = ['distance', 'distance (mi)', 'miles', 'dist']
+    nrsf_keys = ['nrsf', 'rentable sf', 'total sf', 'square feet', 'square ft', 'sq ft', 'total rentable square footage']
+    distance_keys = ['distance', 'distance (mi)', 'distance (miles)', 'miles', 'dist']
+    facility_id_keys = ['facility id', 'facilityid', 'id']
+    lat_keys = ['latitude', 'lat']
+    lon_keys = ['longitude', 'lon', 'lng']
 
     # Standard unit sizes to look for
     standard_sizes = ['5x5', '5x10', '10x10', '10x15', '10x20', '10x30']
 
     # Debug: Print available columns
-    print(f"CSV Columns found: {list(headers.keys())[:10]}")  # Print first 10 column names
+    print(f"CSV Columns found: {list(headers.keys())[:15]}")
 
     for row in rows:
         comp = {"source": "CSV"}
 
+        # Extract facility ID for deduplication
+        facility_id = find_value_in_row(row, headers, facility_id_keys)
+        if facility_id:
+            comp["facility_id"] = str(facility_id).strip()
+
         # Extract facility name
         name = find_value_in_row(row, headers, name_keys)
-        if not name or name.strip() == "":
+        if not name or str(name).strip() == "" or str(name).strip().lower() == 'nan':
             continue
-        comp["name"] = name.strip()
+        # Clean facility name (remove leading artifacts like "A\n")
+        comp["name"] = str(name).strip().replace('\n', ' ').replace('A ', '', 1) if str(name).startswith('A\n') else str(name).strip()
 
         # Extract address
         address = find_value_in_row(row, headers, address_keys)
         if address:
-            comp["address"] = address.strip()
+            comp["address"] = str(address).strip()
+
+        # Extract latitude/longitude for distance calculations
+        lat = find_value_in_row(row, headers, lat_keys)
+        lon = find_value_in_row(row, headers, lon_keys)
+        if lat and lon:
+            try:
+                comp["latitude"] = float(lat)
+                comp["longitude"] = float(lon)
+            except:
+                pass
 
         # Extract units
         units = find_value_in_row(row, headers, units_keys)
@@ -135,50 +155,33 @@ def extract_competitors_from_csv(rows: List[Dict], headers: Dict) -> List[Dict]:
                 pass
 
         # Extract rates for ALL standard unit sizes (5x5, 5x10, 10x10, 10x15, 10x20, 10x30)
+        # TractiQ Excel columns are like "CC - 5x5", "Non CC - 5x5", etc.
         for size in standard_sizes:
-            # Look for columns matching this size with various formats
-            # Examples: "5x5 CC", "5 x 5", "5x5 Climate", "CC - 5x5", "5x5 rate"
-            size_patterns = [
-                size,  # Exact match: "5x5"
-                size.replace('x', ' x '),  # With spaces: "5 x 5"
-                f'{size} cc',  # Climate controlled: "5x5 cc"
-                f'{size} climate',  # "5x5 climate"
-                f'cc - {size}',  # "cc - 5x5"
-                f'{size} rate',  # "5x5 rate"
-                f'rate - {size}',  # "rate - 5x5"
-                f'{size} ncc',  # Non-climate: "5x5 ncc"
-                f'ncc - {size}',  # "ncc - 5x5"
-            ]
-
-            # Try to find rate for this size
-            rate_value = None
-            is_climate = False
-
-            # Search through all column headers
+            # Look for climate controlled rates (CC - {size})
             for col_key, col_name in headers.items():
                 col_lower = col_key.lower()
-                size_normalized = size.replace('x', '')
-
-                # Check if this column matches the size
-                if any(pattern in col_lower for pattern in [size, size.replace('x', ' x '), size.replace('x', '')]):
-                    # Found a column for this size - extract rate
+                # Match "cc - 5x5" or "cc - 5x10" etc.
+                if f'cc - {size}' in col_lower or f'cc-{size}' in col_lower:
                     value = row.get(col_name, '')
-                    if value and str(value).strip() and str(value).strip().lower() not in ['n/a', 'na', '-', '']:
+                    if value and str(value).strip() and str(value).strip().lower() not in ['n/a', 'na', '-', '', 'nan']:
                         try:
                             rate_clean = str(value).replace('$', '').replace(',', '').strip()
                             rate_float = float(rate_clean)
-                            if 10 <= rate_float <= 1000:  # Reasonable range for monthly rates
-                                rate_value = rate_float
-                                # Check if this is climate controlled
-                                is_climate = any(cc in col_lower for cc in ['cc', 'climate', 'climate controlled'])
-                                break
+                            if 0.1 <= rate_float <= 50:  # Per SF rates typically $0.50-$5.00
+                                comp[f"rate_cc-{size}"] = rate_float
                         except:
                             pass
-
-            # Store the rate if found
-            if rate_value:
-                rate_key = f"rate_{size}" if not is_climate else f"rate_{size}_cc"
-                comp[rate_key] = rate_value
+                # Match "non cc - 5x5" or "noncc - 5x5" etc.
+                elif 'non' in col_lower and size in col_lower:
+                    value = row.get(col_name, '')
+                    if value and str(value).strip() and str(value).strip().lower() not in ['n/a', 'na', '-', '', 'nan']:
+                        try:
+                            rate_clean = str(value).replace('$', '').replace(',', '').strip()
+                            rate_float = float(rate_clean)
+                            if 0.1 <= rate_float <= 50:  # Per SF rates typically $0.50-$5.00
+                                comp[f"rate_noncc-{size}"] = rate_float
+                        except:
+                            pass
 
         # Extract NRSF
         nrsf = find_value_in_row(row, headers, nrsf_keys)
@@ -192,14 +195,31 @@ def extract_competitors_from_csv(rows: List[Dict], headers: Dict) -> List[Dict]:
         distance = find_value_in_row(row, headers, distance_keys)
         if distance:
             try:
-                comp["distance_miles"] = float(re.sub(r'[^\d.]', '', str(distance)))
+                dist_val = float(re.sub(r'[^\d.]', '', str(distance)))
+                if dist_val >= 0:  # Valid distance
+                    comp["distance_miles"] = dist_val
             except:
                 pass
 
         # Only add if we have at least name + one metric
         if len(comp) > 2:
-            competitors.append(comp)
+            # Use facility_id for deduplication, fallback to address
+            dedup_key = comp.get("facility_id") or comp.get("address", comp["name"])
 
+            if dedup_key in facilities_by_id:
+                # Merge rate data into existing record
+                existing = facilities_by_id[dedup_key]
+                for key, value in comp.items():
+                    if key.startswith("rate_") and key not in existing:
+                        existing[key] = value
+                    elif key not in existing:
+                        existing[key] = value
+            else:
+                facilities_by_id[dedup_key] = comp
+
+    # Return deduplicated list
+    competitors = list(facilities_by_id.values())
+    print(f"CSV extraction: {len(rows)} rows -> {len(competitors)} unique facilities")
     return competitors
 
 

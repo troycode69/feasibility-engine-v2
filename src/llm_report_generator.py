@@ -65,24 +65,22 @@ class ReportData:
 # PROMPT TEMPLATES
 # ============================================================================
 
-SYSTEM_PROMPT = """You are an expert self-storage industry analyst and feasibility consultant working for StorSageHQ, a premium self-storage consulting firm.
+SYSTEM_PROMPT = """You are a senior self-storage feasibility consultant at StorSageHQ, a premier consulting firm trusted by institutional investors, REITs, and private developers. Write like a human expert presenting to sophisticated investors and lenders who will make multi-million dollar decisions based on your analysis.
 
-Your role is to synthesize complex market data, financial projections, and competitive intelligence into clear, actionable recommendations for self-storage development projects.
+Your Analysis Style:
+- NARRATIVE-DRIVEN: Tell a compelling story about this market and opportunity. Don't just list data points - explain what they mean and why they matter. Connect the dots for the reader.
+- STRATEGICALLY INSIGHTFUL: Go beyond surface metrics. Explain the implications of each finding. What does 6.2 SF/capita actually tell us about demand absorption? What does 88% occupancy signal about pricing power?
+- PROFESSIONALLY AUTHORITATIVE: Use industry terminology correctly (NRSF, NOI, DSCR, cap rate, IRR, lease-up, absorption, rate compression). Your reader knows the industry - write at their level.
+- BALANCED AND HONEST: Acknowledge both opportunities AND risks with equal rigor. Never oversell. Sophisticated readers respect candor over optimism.
+- ACTION-ORIENTED: Every section should build toward clear recommendations. What should the investor DO with this information?
 
-Writing Style:
-- Professional and authoritative, but accessible
-- Data-driven with specific numbers and metrics
-- Balanced - acknowledge both opportunities and risks
-- Strategic focus on "why" not just "what"
-- Use industry terminology correctly (NRSF, NOI, DSCR, cap rate, etc.)
-- Avoid generic platitudes - be specific and insightful
+Voice and Tone:
+- Confident but not arrogant. You're presenting expert analysis, not guessing.
+- Direct and concise. Remove filler words and unnecessary qualifiers.
+- Specific to THIS project. Avoid generic statements that could apply to any site.
+- Data-forward. Lead with numbers, then explain their significance.
 
-Report Structure:
-- Lead with key findings and recommendations
-- Support conclusions with data
-- Explain the reasoning behind scoring decisions
-- Highlight critical risk factors
-- Provide actionable next steps"""
+CRITICAL: Match the tone, depth, and professionalism of the StorSageHQ example study provided. Your output will be compared directly against that standard."""
 
 
 EXECUTIVE_SUMMARY_PROMPT = """Based on the comprehensive feasibility analysis data provided, write a compelling Executive Summary for this self-storage development project.
@@ -368,39 +366,111 @@ def call_claude_api(prompt: str, system_prompt: str = SYSTEM_PROMPT,
         return f"ERROR calling Claude API: {str(e)}"
 
 
-def generate_executive_summary(report_data: ReportData) -> str:
+def generate_executive_summary(report_data: ReportData, use_examples: bool = True) -> str:
     """Generate Executive Summary section"""
     prompt = EXECUTIVE_SUMMARY_PROMPT.format(data=report_data.to_json())
+
+    # Add example studies if available
+    if use_examples:
+        try:
+            from src.example_study_loader import load_example_studies, format_examples_for_prompt
+            examples = load_example_studies()
+            if examples:
+                example_context = format_examples_for_prompt(examples, max_examples=2)
+                prompt = example_context + prompt
+        except Exception as e:
+            print(f"Could not load example studies: {e}")
+
     return call_claude_api(prompt)
 
 
-def generate_market_analysis(report_data: ReportData) -> str:
+def generate_market_analysis(report_data: ReportData, use_examples: bool = True) -> str:
     """Generate Market Analysis section"""
     prompt = MARKET_ANALYSIS_PROMPT.format(data=report_data.to_json())
+
+    # Add example studies for richer context
+    if use_examples:
+        try:
+            from src.example_study_loader import load_example_studies, format_examples_for_prompt
+            examples = load_example_studies()
+            if examples:
+                example_context = format_examples_for_prompt(examples, max_examples=2)
+                prompt = example_context + prompt
+        except Exception as e:
+            print(f"Could not load example studies: {e}")
+
     return call_claude_api(prompt, max_tokens=6000)
 
 
-def generate_financial_analysis(report_data: ReportData) -> str:
+def generate_financial_analysis(report_data: ReportData, use_examples: bool = True) -> str:
     """Generate Financial Feasibility section"""
     prompt = FINANCIAL_ANALYSIS_PROMPT.format(data=report_data.to_json())
+
+    # Add example studies for richer context
+    if use_examples:
+        try:
+            from src.example_study_loader import load_example_studies, format_examples_for_prompt
+            examples = load_example_studies()
+            if examples:
+                example_context = format_examples_for_prompt(examples, max_examples=2)
+                prompt = example_context + prompt
+        except Exception as e:
+            print(f"Could not load example studies: {e}")
+
     return call_claude_api(prompt, max_tokens=5000)
 
 
-def generate_site_scoring(report_data: ReportData) -> str:
+def generate_site_scoring(report_data: ReportData, use_examples: bool = True) -> str:
     """Generate Site Scoring System section"""
     prompt = SITE_SCORING_PROMPT.format(data=report_data.to_json())
+
+    # Add example studies for richer context
+    if use_examples:
+        try:
+            from src.example_study_loader import load_example_studies, format_examples_for_prompt
+            examples = load_example_studies()
+            if examples:
+                example_context = format_examples_for_prompt(examples, max_examples=2)
+                prompt = example_context + prompt
+        except Exception as e:
+            print(f"Could not load example studies: {e}")
+
     return call_claude_api(prompt, max_tokens=5000)
 
 
-def generate_recommendation(report_data: ReportData) -> str:
+def generate_recommendation(report_data: ReportData, use_examples: bool = True) -> str:
     """Generate Conclusion & Recommendation section"""
     prompt = RECOMMENDATION_PROMPT.format(data=report_data.to_json())
+
+    # Add example studies for richer context
+    if use_examples:
+        try:
+            from src.example_study_loader import load_example_studies, format_examples_for_prompt
+            examples = load_example_studies()
+            if examples:
+                example_context = format_examples_for_prompt(examples, max_examples=2)
+                prompt = example_context + prompt
+        except Exception as e:
+            print(f"Could not load example studies: {e}")
+
     return call_claude_api(prompt, max_tokens=4000)
 
 
-def generate_risk_assessment(report_data: ReportData) -> str:
+def generate_risk_assessment(report_data: ReportData, use_examples: bool = True) -> str:
     """Generate Risk Assessment & Mitigation section"""
     prompt = RISK_ASSESSMENT_PROMPT.format(data=report_data.to_json())
+
+    # Add example studies for richer context
+    if use_examples:
+        try:
+            from src.example_study_loader import load_example_studies, format_examples_for_prompt
+            examples = load_example_studies()
+            if examples:
+                example_context = format_examples_for_prompt(examples, max_examples=2)
+                prompt = example_context + prompt
+        except Exception as e:
+            print(f"Could not load example studies: {e}")
+
     return call_claude_api(prompt, max_tokens=4000)
 
 

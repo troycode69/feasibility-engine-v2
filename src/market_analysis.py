@@ -153,7 +153,27 @@ def calculate_market_supply(tractiq_data: Optional[Dict] = None,
     # Combine competitor lists
     competitors = []
 
-    if tractiq_data and "aggregated_data" in tractiq_data:
+    # Handle new TractiQ cache format (address-based)
+    if tractiq_data and "competitors" in tractiq_data:
+        competitors_list = tractiq_data["competitors"]
+        competitors.extend(competitors_list)
+        metrics.competitor_count = len(competitors_list)
+
+        # Calculate total SF from competitor data
+        # Use NRSF if available, otherwise estimate based on typical facility size
+        for comp in competitors_list:
+            nrsf = comp.get('nrsf') or comp.get('total_rentable_sf') or comp.get('Total Rentable Square Footage')
+            if nrsf:
+                try:
+                    metrics.total_market_sf += float(nrsf)
+                except:
+                    pass
+            else:
+                # Estimate: Average self-storage facility is ~45,000 NRSF
+                metrics.total_market_sf += 45000
+
+    # Legacy format support
+    elif tractiq_data and "aggregated_data" in tractiq_data:
         agg = tractiq_data["aggregated_data"]
 
         # Get competitor count
@@ -239,7 +259,8 @@ def perform_supply_demand_analysis(market_name: str,
                                    tractiq_data: Optional[Dict] = None,
                                    scraper_results: Optional[List[Dict]] = None,
                                    site_lat: Optional[float] = None,
-                                   site_lon: Optional[float] = None) -> SupplyDemandAnalysis:
+                                   site_lon: Optional[float] = None,
+                                   analysis_radius: int = 3) -> SupplyDemandAnalysis:
     """
     Perform complete supply/demand analysis.
 
@@ -249,6 +270,7 @@ def perform_supply_demand_analysis(market_name: str,
         tractiq_data: TractiQ cached market data
         scraper_results: Google Maps scraper results
         site_lat, site_lon: Subject site coordinates
+        analysis_radius: Radius in miles for analysis (1, 3, or 5)
 
     Returns:
         Complete SupplyDemandAnalysis
@@ -273,6 +295,36 @@ def perform_supply_demand_analysis(market_name: str,
 
     # Calculate derived metrics
     analysis.calculate_metrics()
+
+    # Override with TractiQ SF per capita if available (more accurate than calculation)
+    if tractiq_data and tractiq_data.get('sf_per_capita_analysis'):
+        sf_analysis = tractiq_data['sf_per_capita_analysis']
+        sf_per_cap_key = f'sf_per_capita_{analysis_radius}mi'
+
+        if sf_analysis.get(sf_per_cap_key):
+            analysis.sf_per_capita_3mi = sf_analysis[sf_per_cap_key]
+            # Recalculate balance tier with TractiQ value
+            sf_per_cap = analysis.sf_per_capita_3mi
+
+            # Adjust thresholds based on radius (smaller radii naturally have higher SF/capita)
+            if analysis_radius == 1:
+                # 1-mile: higher thresholds
+                if sf_per_cap < 15.0:
+                    analysis.balance_tier_3mi = "undersupplied"
+                elif sf_per_cap <= 25.0:
+                    analysis.balance_tier_3mi = "balanced"
+                else:
+                    analysis.balance_tier_3mi = "oversupplied"
+            else:
+                # 3-mile and 5-mile: standard thresholds
+                if sf_per_cap < 5.0:
+                    analysis.balance_tier_3mi = "undersupplied"
+                elif sf_per_cap <= 7.0:
+                    analysis.balance_tier_3mi = "balanced"
+                else:
+                    analysis.balance_tier_3mi = "oversupplied"
+
+            print(f"      ℹ Using TractiQ SF per capita: {analysis.sf_per_capita_3mi:.2f} ({analysis_radius}-mile)")
 
     return analysis
 

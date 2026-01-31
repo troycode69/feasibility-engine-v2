@@ -148,13 +148,23 @@ def get_scraper_competitors(address: str, radius_miles: float = 5.0) -> List[Dic
             not users_exists
         )
 
+        # Geocode address to get coordinates for scraper
+        from src.geocoding import get_coordinates
+        coords = get_coordinates(address)
+
+        if not coords:
+            print(f"Could not geocode address for scraping: {address}")
+            return []
+
+        target_lat, target_lon = coords
+
         # Load appropriate scraper
         if is_cloud:
             from src.scraper_cloud import get_competitors_realtime_cloud
-            competitors = get_competitors_realtime_cloud(address, radius_miles=radius_miles)
+            competitors = get_competitors_realtime_cloud(target_lat, target_lon, radius_miles=radius_miles)
         else:
             from src.scraper import get_competitors_realtime
-            competitors = get_competitors_realtime(address, radius_miles=radius_miles)
+            competitors = get_competitors_realtime(target_lat, target_lon, radius_miles=radius_miles)
 
         return competitors if competitors else []
     except Exception as e:
@@ -166,24 +176,71 @@ def get_scraper_competitors(address: str, radius_miles: float = 5.0) -> List[Dic
 
 def load_tractiq_data(market_id: Optional[str]) -> Optional[Dict]:
     """
-    Load TractiQ cached data if available.
+    Load TractiQ cached data if available, including demographics and SF per capita analysis.
 
     Args:
-        market_id: TractiQ market ID
+        market_id: TractiQ market ID or site address
 
     Returns:
-        Cached market data dict or None
+        Cached market data dict with competitors, demographics, and SF/capita analysis, or None
     """
     if not market_id:
         return None
 
     try:
-        cache_path = Path("src/data/tractiq_cache") / f"{market_id}.json"
-        if cache_path.exists():
-            with open(cache_path) as f:
-                return json.load(f)
+        # Load the full market data (including aggregated_data with calculated SF/capita)
+        from src.tractiq_cache import TractIQCache
+
+        cache = TractIQCache()
+        market_data = cache.get_market_data(market_id)
+
+        if not market_data:
+            return None
+
+        # Get aggregated data which has calculated SF per capita values
+        aggregated = market_data.get('aggregated_data', {})
+
+        # Filter competitors by distance (5.5 miles from site)
+        all_competitors = aggregated.get('competitors', [])
+
+        # Try to geocode the site address for distance filtering
+        try:
+            from src.geocoding import geocode_address
+            site_lat, site_lon, _ = geocode_address(market_id)
+
+            # Filter competitors by distance
+            from src.rate_merger import calculate_distance
+            filtered_competitors = []
+            for comp in all_competitors:
+                if comp.get('latitude') and comp.get('longitude'):
+                    distance = calculate_distance(
+                        site_lat, site_lon,
+                        comp['latitude'], comp['longitude']
+                    )
+                    if distance <= 5.5:
+                        comp['distance_miles'] = distance
+                        filtered_competitors.append(comp)
+
+            competitors = filtered_competitors if filtered_competitors else all_competitors
+            print(f"Filtering complete: {len(competitors)} of {len(all_competitors)} competitors within 5.5 miles")
+        except:
+            # If geocoding fails, use all competitors
+            competitors = all_competitors
+
+        result = {
+            'competitor_count': len(competitors),
+            'competitors': competitors,
+            'market_name': market_data.get('market_name', market_id),
+            'demographics': aggregated.get('demographics', {}),
+            'sf_per_capita_analysis': aggregated.get('sf_per_capita_analysis', {})
+        }
+
+        return result
+
     except Exception as e:
         print(f"TractiQ data load error: {e}")
+        import traceback
+        traceback.print_exc()
 
     return None
 
@@ -215,12 +272,14 @@ def get_census_demographics(lat: float, lon: float) -> Dict:
     }
 
 
-def run_analytics(inputs: ProjectInputs) -> AnalyticsResults:
+def run_analytics(inputs: ProjectInputs, custom_demographics: Optional[Dict] = None, analysis_radius: int = 3) -> AnalyticsResults:
     """
     Run all analytics modules and compile results.
 
     Args:
         inputs: ProjectInputs with all user-provided data
+        custom_demographics: Optional dict to override Census API demographics (e.g., from TractiQ)
+        analysis_radius: Radius in miles for market analysis (1, 3, or 5). Default is 3.
 
     Returns:
         Complete AnalyticsResults
@@ -229,6 +288,7 @@ def run_analytics(inputs: ProjectInputs) -> AnalyticsResults:
 
     print(f"\n{'='*70}")
     print(f"RUNNING FEASIBILITY ANALYSIS: {inputs.project_name}")
+    print(f"Analysis Radius: {analysis_radius}-mile")
     print(f"{'='*70}\n")
 
     # Step 1: Geocode site address
@@ -239,19 +299,61 @@ def run_analytics(inputs: ProjectInputs) -> AnalyticsResults:
     results.geocoded_address = formatted_address
     print(f"      ✓ Location: {lat:.4f}, {lon:.4f}")
 
-    # Step 2: Get demographics
-    print("[2/7] Fetching demographic data...")
-    demographics = get_census_demographics(lat, lon)
-    print(f"      ✓ Population (3-mile): {demographics['population_3mi']:,}")
-    print(f"      ✓ Median Income: ${demographics['median_income']:,}")
-
-    # Step 3: Load TractiQ data AND run scraper (merge both sources)
-    print("[3/7] Loading market intelligence...")
+    # Step 2: Load TractiQ data first (to get demographics)
+    print("[2/7] Loading market intelligence...")
     tractiq_data = load_tractiq_data(inputs.tractiq_market_id)
     if tractiq_data:
         print(f"      ✓ TractiQ data loaded: {tractiq_data.get('competitor_count', 0)} competitors")
     else:
         print("      ℹ No TractiQ data available")
+
+    # Step 3: Get demographics (prefer TractiQ, fallback to Census API or custom)
+    print("[3/7] Fetching demographic data...")
+
+    # Priority: 1) TractiQ demographics, 2) Custom demographics, 3) Census API
+    if tractiq_data and tractiq_data.get('demographics'):
+        # Use TractiQ demographics for selected radius
+        tractiq_demo = tractiq_data['demographics']
+
+        # Get data for selected radius (with fallbacks)
+        pop_key = f'population_{analysis_radius}mi'
+        income_key = f'median_income_{analysis_radius}mi'
+        renter_key = f'renter_occupied_pct_{analysis_radius}mi'
+        households_key = f'households_{analysis_radius}mi'
+
+        demographics = {
+            "population_1mi": tractiq_demo.get('population_1mi', 0),
+            "population_3mi": tractiq_demo.get('population_3mi', 0),
+            "population_5mi": tractiq_demo.get('population_5mi', 0),
+            "population_20mi": tractiq_demo.get('population_20mi', 0),
+            # Primary values based on selected radius
+            "population": tractiq_demo.get(pop_key, tractiq_demo.get('population_3mi', 0)),
+            "households_3mi": tractiq_demo.get(households_key, tractiq_demo.get('households_3mi', 0)),
+            "median_income": tractiq_demo.get(income_key, tractiq_demo.get('median_income_3mi', 0)),
+            "renter_occupied_pct": tractiq_demo.get(renter_key, tractiq_demo.get('renter_occupied_pct_3mi', 0)),
+            "median_age": tractiq_demo.get('median_age', 37.0),
+            "growth_rate": tractiq_demo.get('population_growth_rate_annual', 1.5),
+            "job_growth": 2.0,  # Not in TractiQ PDF
+            "unemployment_rate": 4.5,  # Not in TractiQ PDF
+            "gdp_growth": 2.5,  # Not in TractiQ PDF
+            "analysis_radius": analysis_radius  # Store for reference
+        }
+        print(f"      ✓ Using TractiQ demographics ({analysis_radius}-mile radius)")
+        print(f"      ✓ Population ({analysis_radius}-mile): {demographics['population']:,}")
+        print(f"      ✓ Median Income: ${demographics['median_income']:,}")
+        print(f"      ✓ Renter-Occupied: {demographics['renter_occupied_pct']:.1f}%")
+    elif custom_demographics:
+        demographics = custom_demographics
+        print(f"      ✓ Using custom demographics")
+        print(f"      ✓ Population (3-mile): {demographics['population_3mi']:,}")
+        print(f"      ✓ Population (5-mile): {demographics['population_5mi']:,}")
+        print(f"      ✓ Median Income: ${demographics['median_income']:,}")
+        print(f"      ✓ Renter-Occupied: {demographics['renter_occupied_pct']}%")
+    else:
+        demographics = get_census_demographics(lat, lon)
+        print(f"      ⚠ Using Census API (less accurate than TractiQ)")
+        print(f"      ✓ Population (3-mile): {demographics['population_3mi']:,}")
+        print(f"      ✓ Median Income: ${demographics['median_income']:,}")
 
     # Always run scraper to get additional competitors
     print("      🔍 Running web scraper for additional competitors...")
@@ -260,14 +362,15 @@ def run_analytics(inputs: ProjectInputs) -> AnalyticsResults:
     results.scraper_competitors = scraper_results
 
     # Step 4: Market supply/demand analysis
-    print("[4/7] Analyzing market supply/demand...")
+    print(f"[4/7] Analyzing market supply/demand ({analysis_radius}-mile radius)...")
     results.market_supply_demand = market_analysis.perform_supply_demand_analysis(
         market_name=f"{inputs.project_name} Market",
         demographics=demographics,
         tractiq_data=tractiq_data,
         scraper_results=results.scraper_competitors,
         site_lat=lat,
-        site_lon=lon
+        site_lon=lon,
+        analysis_radius=analysis_radius
     )
     print(f"      ✓ SF Per Capita: {results.market_supply_demand.sf_per_capita_3mi:.2f}")
     print(f"      ✓ Market Balance: {results.market_supply_demand.balance_tier_3mi}")
@@ -343,9 +446,9 @@ def run_analytics(inputs: ProjectInputs) -> AnalyticsResults:
     # Step 6: Site scoring
     print("[6/7] Calculating 100-point site score...")
 
-    # Demographics scoring
+    # Demographics scoring (using selected radius)
     demographics_data = {
-        "population_3mi": demographics["population_3mi"],
+        "population_3mi": demographics["population"],  # Use primary population for selected radius
         "growth_rate": demographics["growth_rate"],
         "median_income": demographics["median_income"],
         "renter_occupied_pct": demographics["renter_occupied_pct"],
@@ -381,11 +484,11 @@ def run_analytics(inputs: ProjectInputs) -> AnalyticsResults:
         "brand_strength": 3  # 3/5
     }
 
-    # Economic market
+    # Economic market (use defaults if not in demographics)
     economic_data = {
-        "unemployment_rate": demographics["unemployment_rate"],
-        "job_growth": demographics["job_growth"],
-        "gdp_growth": demographics["gdp_growth"]
+        "unemployment_rate": demographics.get("unemployment_rate", 4.5),
+        "job_growth": demographics.get("job_growth", 2.0),
+        "gdp_growth": demographics.get("gdp_growth", 2.5)
     }
 
     # Create scorecard

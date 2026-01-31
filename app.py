@@ -4,6 +4,11 @@ import os
 import sys
 from datetime import datetime
 import re
+from pathlib import Path
+
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
 
 # VERSION MARKER - Force Streamlit Cloud to update
 APP_VERSION = "2.5.0-PRODUCTION"
@@ -233,8 +238,9 @@ st.set_page_config(page_title="StorSageHQ", page_icon="assets/logo.png", layout=
 # st.image("assets/logo.png", width=120)  # Removed from main area
 
 # Session state
-if "ai_assistant" not in st.session_state:
-    st.session_state.ai_assistant = IntelligenceAgent()
+# Disabled AI assistant during local testing
+# if "ai_assistant" not in st.session_state:
+#     st.session_state.ai_assistant = IntelligenceAgent()
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 if "scorer" not in st.session_state:
@@ -623,8 +629,9 @@ if page == "📝 Project Inputs":
     cached_data = None
     cached_stats = None
     if project_address:
-        # Get cached TractiQ data (use as-is from TractiQ reports)
-        cached_data = get_cached_tractiq_data(project_address, site_address=None, radius_miles=5.0)
+        # Get cached TractiQ data with user-selected radius (default 5-mile)
+        selected_radius = st.session_state.get('analysis_radius', 5)
+        cached_data = get_cached_tractiq_data(project_address, site_address=project_address, radius_miles=selected_radius)
         if cached_data:
             # Calculate stats from data
             total_competitors = sum(len(pdf.get('competitors', [])) for pdf in cached_data.values())
@@ -642,11 +649,10 @@ if page == "📝 Project Inputs":
     # Show cached data status
     if cached_data and cached_stats:
         comp_count = cached_stats.get('total_competitors', 0)
-        st.success(f"✅ Found cached TractiQ data with {comp_count} competitors!")
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Competitors", comp_count)
-        col2.metric("Data Sources", cached_stats.get('data_sources', 0))
-        col3.metric("Last Updated", cached_stats.get('last_updated', 'Unknown')[:10] if cached_stats.get('last_updated') else 'Unknown')
+        st.success(f"✅ Market data loaded - {comp_count} competitors within {selected_radius} miles")
+        col1, col2 = st.columns(2)
+        col1.metric("Competitors (5mi)", comp_count)
+        col2.metric("Source", "TractiQ")
 
         # Auto-set the tractiq_market_id from cached data
         if "tractiq_market_id" not in st.session_state or not st.session_state.tractiq_market_id:
@@ -655,6 +661,46 @@ if page == "📝 Project Inputs":
             cache = TractIQCache()
             market_id = cache._generate_market_id(project_address)
             st.session_state.tractiq_market_id = market_id
+
+        # Add radius selector
+        st.markdown("#### 📍 Analysis Radius")
+        radius_options = {
+            "1-mile": 1,
+            "3-mile (Standard)": 3,
+            "5-mile": 5
+        }
+
+        # Initialize analysis_radius in session state if not present
+        if "analysis_radius" not in st.session_state:
+            st.session_state.analysis_radius = 3  # Default to 3-mile
+
+        selected_radius_label = st.selectbox(
+            "Select market radius for analysis",
+            options=list(radius_options.keys()),
+            index=1,  # Default to "3-mile (Standard)"
+            help="Choose the radius around your site for demographic and market analysis. 3-mile is industry standard."
+        )
+        st.session_state.analysis_radius = radius_options[selected_radius_label]
+
+        # Display metrics for selected radius
+        if cached_stats:
+            radius_mi = st.session_state.analysis_radius
+            demo = cached_stats.get('demographics', {})
+            sf_analysis = cached_stats.get('sf_per_capita', {})
+
+            st.markdown(f"**{selected_radius_label} Metrics:**")
+            col1, col2, col3 = st.columns(3)
+
+            pop = demo.get(f'population_{radius_mi}mi')
+            income = demo.get(f'median_income_{radius_mi}mi')
+            sf_per_cap = sf_analysis.get(f'sf_per_capita_{radius_mi}mi')
+
+            if pop:
+                col1.metric("Population", f"{pop:,}")
+            if income:
+                col2.metric("Median Income", f"${income:,}")
+            if sf_per_cap:
+                col3.metric("SF/Capita", f"{sf_per_cap:.2f}")
 
         st.info("You can upload additional TractiQ files below to add to the cached data, or proceed with analysis using existing data.")
     else:
@@ -712,6 +758,48 @@ if page == "📝 Project Inputs":
 
     st.markdown("---")
 
+    # TractiQ Demographics Override (since Census API is inaccurate)
+    with st.expander("📊 Override Demographics (Use TractiQ Data)", expanded=False):
+        st.markdown("**Use TractiQ demographic data instead of Census API for accurate results**")
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            tractiq_pop_5mi = st.number_input("Population (5-mile)", value=208000, step=1000,
+                help="From TractiQ demographic report")
+            tractiq_pop_3mi = st.number_input("Population (3-mile)", value=None, step=1000,
+                help="Optional - will estimate from 5-mile if not provided")
+        with col2:
+            tractiq_income = st.number_input("Median Household Income", value=72000, step=1000,
+                help="From TractiQ demographic report")
+            tractiq_renter_pct = st.number_input("Renter-Occupied %", value=46.0, step=0.1,
+                help="From TractiQ demographic report")
+        with col3:
+            tractiq_growth = st.number_input("Population Growth Rate %", value=1.5, step=0.1,
+                help="From TractiQ demographic report")
+            tractiq_age = st.number_input("Median Age", value=37.0, step=0.1,
+                help="From TractiQ demographic report")
+
+        use_tractiq_demo = st.checkbox("✅ Use TractiQ demographics (recommended)", value=True,
+            help="Override Census API with TractiQ data for more accurate analysis")
+
+        # Store in session state
+        if use_tractiq_demo:
+            st.session_state.tractiq_demographics = {
+                'population_5mi': tractiq_pop_5mi,
+                'population_3mi': tractiq_pop_3mi or int(tractiq_pop_5mi * 0.4),  # Estimate 3mi as 40% of 5mi
+                'population_1mi': int((tractiq_pop_3mi or int(tractiq_pop_5mi * 0.4)) * 0.3),  # Estimate 1mi
+                'median_income': tractiq_income,
+                'renter_occupied_pct': tractiq_renter_pct,
+                'growth_rate': tractiq_growth,
+                'median_age': tractiq_age,
+                'households_3mi': int((tractiq_pop_3mi or int(tractiq_pop_5mi * 0.4)) / 2.5)  # Avg household size
+            }
+            st.success("✅ Using TractiQ demographics for analysis")
+        else:
+            st.session_state.tractiq_demographics = None
+
+    st.markdown("---")
+
     # BIG ANALYZE BUTTON
     st.markdown("### 🚀 Ready to Analyze?")
 
@@ -738,13 +826,17 @@ if page == "📝 Project Inputs":
                     land_cost=land_cost if land_cost else 0,
                     loan_to_cost=loan_to_cost,
                     interest_rate=interest_rate,
-                    tractiq_market_id=st.session_state.get("tractiq_market_id"),  # Pass TractiQ data if uploaded
+                    tractiq_market_id=project_address,  # Pass address for TractiQ cache lookup
                     # Will add more parameters as needed
                 )
 
                 # Run 7-step analytics pipeline
-                st.info("Running 7-step analytics pipeline...")
-                analytics_results = run_analytics(inputs)
+                analysis_radius = st.session_state.get('analysis_radius', 3)
+                st.info(f"Running 7-step analytics pipeline ({analysis_radius}-mile radius)...")
+
+                # Pass TractiQ demographics if available
+                custom_demographics = st.session_state.get('tractiq_demographics')
+                analytics_results = run_analytics(inputs, custom_demographics=custom_demographics, analysis_radius=analysis_radius)
 
                 # Store results in session state
                 st.session_state.analysis_results = analytics_results
@@ -929,23 +1021,68 @@ elif page == "📊 Market Intel":
         from src.rate_merger import merge_competitor_rates
         from src.tractiq_cache import get_cached_tractiq_data
 
-        # Get TractiQ data from cache if available
+        # Get TractiQ data from cache, filtered to 5.5-mile radius of CURRENT SITE
         tractiq_data = {}
-        if st.session_state.get("tractiq_market_id"):
-            project_address = st.session_state.property_data.get('address', '')
+        market_id = st.session_state.get("tractiq_market_id")
+        project_address = st.session_state.property_data.get('address', '')
+
+        st.write(f"🔍 DEBUG - Cache lookup:")
+        st.write(f"  market_id: '{market_id}'")
+        st.write(f"  project_address: '{project_address}'")
+
+        if market_id:
             if project_address:
-                # Get cached data (use TractiQ data as-is)
+                # Get TractiQ data filtered to user-selected radius
+                # IMPORTANT: Pass project_address (not market_id) for cache lookup
+                selected_radius = st.session_state.get('analysis_radius', 5)
                 tractiq_data = get_cached_tractiq_data(
-                    st.session_state.tractiq_market_id,
-                    site_address=None,
-                    radius_miles=5.0
+                    project_address,  # Use address for lookup, not pre-normalized market_id
+                    site_address=project_address,  # Use stored coordinates for instant filtering
+                    radius_miles=selected_radius
                 )
 
-        # Get scraper competitors
-        scraper_competitors = results.scraper_competitors if hasattr(results, 'scraper_competitors') else []
+                # Show filtering results
+                if tractiq_data:
+                    total_comps = sum(len(pdf.get('competitors', [])) for pdf in tractiq_data.values())
+                    st.write(f"  ✅ Returned: {total_comps} competitors after 5.5-mile filter")
+                else:
+                    st.write(f"  ⚠️ Cache returned EMPTY after filtering")
+            else:
+                st.warning("⚠️ No project address in session state")
+        else:
+            st.warning("⚠️ No tractiq_market_id - upload TractiQ CSV on Inputs page first")
+
+        # Scraper disabled - focusing on TractiQ accuracy first
+        scraper_competitors = []
+
+        # DEBUG: Show what we're passing to merger
+        st.write("🔍 DEBUG - Data being passed to merger:")
+        st.write(f"TractiQ data keys: {list(tractiq_data.keys()) if tractiq_data else 'EMPTY'}")
+        if tractiq_data:
+            for pdf_name, pdf_data in tractiq_data.items():
+                comps = pdf_data.get('competitors', [])
+                st.write(f"  - {pdf_name}: {len(comps)} competitors")
+                if comps:
+                    sample = comps[0]
+                    st.write(f"    Sample keys: {list(sample.keys())}")
+                    rate_keys = [k for k in sample.keys() if 'rate' in k.lower()]
+                    st.write(f"    Rate keys: {rate_keys}")
+                    if rate_keys:
+                        st.write(f"    Sample value for {rate_keys[0]}: {sample.get(rate_keys[0])}")
+        st.write(f"Scraper competitors: {len(scraper_competitors)}")
 
         # Merge the data
         merged_rates = merge_competitor_rates(tractiq_data, scraper_competitors)
+
+        # DEBUG: Show merge results
+        st.write("🔍 DEBUG - Merge results:")
+        st.write(f"Total competitors: {merged_rates['summary']['total_competitors']}")
+        st.write(f"TractiQ count: {merged_rates['summary']['tractiq_count']}")
+        st.write(f"Unit sizes: {merged_rates['summary']['unit_sizes']}")
+        for size in ['5x10', '10x10', '10x15']:
+            if size in merged_rates['by_unit_size']:
+                data = merged_rates['by_unit_size'][size]
+                st.write(f"{size}: NC={len(data['non_climate']['rates'])} rates, C={len(data['climate']['rates'])} rates")
 
         # Display summary
         summary = merged_rates['summary']
@@ -954,51 +1091,65 @@ elif page == "📊 Market Intel":
         col2.metric("TractiQ Sources", summary['tractiq_count'])
         col3.metric("Scraped Sources", summary['scraper_count'])
 
-        # Build rate table
-        by_unit_size = merged_rates['by_unit_size']
-        table_data = {
-            "Unit Size": [],
-            "Climate Min-Max": [],
-            "Climate Avg": [],
-            "Non-Climate Min-Max": [],
-            "Non-Climate Avg": [],
-            "Sample Size": []
-        }
-
-        for size in summary['unit_sizes']:
-            climate_data = by_unit_size[size]['climate']
-            non_climate_data = by_unit_size[size]['non_climate']
-
-            table_data["Unit Size"].append(size)
-
-            # Climate controlled
-            if climate_data['count'] > 0:
-                table_data["Climate Min-Max"].append(f"${climate_data['min']:.0f}-${climate_data['max']:.0f}")
-                table_data["Climate Avg"].append(f"${climate_data['avg']:.0f}")
-            else:
-                table_data["Climate Min-Max"].append("No data")
-                table_data["Climate Avg"].append("-")
-
-            # Non-climate
-            if non_climate_data['count'] > 0:
-                table_data["Non-Climate Min-Max"].append(f"${non_climate_data['min']:.0f}-${non_climate_data['max']:.0f}")
-                table_data["Non-Climate Avg"].append(f"${non_climate_data['avg']:.0f}")
-            else:
-                table_data["Non-Climate Min-Max"].append("No data")
-                table_data["Non-Climate Avg"].append("-")
-
-            # Sample size
-            total_samples = climate_data['count'] + non_climate_data['count']
-            table_data["Sample Size"].append(f"{total_samples} rates")
-
-        # Display table
-        st.table(pd.DataFrame(table_data))
+        # Skip the unit size summary table - user doesn't want it
 
         # Overall rate range
         if summary['rate_range']['min'] and summary['rate_range']['max']:
             st.caption(f"📊 **Overall Rate Range:** ${summary['rate_range']['min']:.0f} - ${summary['rate_range']['max']:.0f} | **Sources:** {summary['tractiq_count']} TractiQ + {summary['scraper_count']} Scraped")
         else:
             st.caption("📊 **Source:** TractiQ cache + Google Maps scraper data")
+
+        # 10 Closest Competitors Table
+        st.subheader("🎯 10 Closest Competitors - 10x10 Rates")
+
+        if tractiq_data:
+            # Gather all competitors with distances
+            comp_list = []
+            for pdf_data in tractiq_data.values():
+                for comp in pdf_data.get('competitors', []):
+                    distance = comp.get('distance_miles')
+                    if distance is not None:
+                        # Extract facility name from address (first part before comma)
+                        address = comp.get('address', 'Unknown')
+                        facility_name = address.split(',')[0].strip() if ',' in address else address[:30]
+
+                        comp_list.append({
+                            'name': comp.get('name', facility_name),  # Use name if available, else extract from address
+                            'address': address,
+                            'distance': distance,
+                            'rate_10x10_nc': comp.get('rate_noncc-10x10', comp.get('rate_10x10')),
+                            'rate_10x10_cc': comp.get('rate_cc-10x10', comp.get('rate_10x10_cc'))
+                        })
+
+            # Sort by distance and take top 10
+            comp_list.sort(key=lambda x: x['distance'])
+            top_10 = comp_list[:10]
+
+            if top_10:
+                closest_table = {
+                    "Distance (mi)": [],
+                    "Facility": [],
+                    "Address": [],
+                    "10x10 Non-Climate ($/SF)": [],
+                    "10x10 Climate ($/SF)": []
+                }
+
+                for comp in top_10:
+                    closest_table["Distance (mi)"].append(f"{comp['distance']:.2f}")
+                    closest_table["Facility"].append(comp['name'][:40])
+                    closest_table["Address"].append(comp['address'][:45])
+                    closest_table["10x10 Non-Climate ($/SF)"].append(
+                        f"${comp['rate_10x10_nc']:.2f}" if comp['rate_10x10_nc'] else "N/A"
+                    )
+                    closest_table["10x10 Climate ($/SF)"].append(
+                        f"${comp['rate_10x10_cc']:.2f}" if comp['rate_10x10_cc'] else "N/A"
+                    )
+
+                st.table(pd.DataFrame(closest_table))
+            else:
+                st.info("No competitors with distance data available")
+        else:
+            st.info("Upload TractiQ data to see closest competitors")
 
     except Exception as e:
         st.warning(f"⚠️ Could not merge rate data: {str(e)}")
@@ -1021,15 +1172,15 @@ elif page == "📊 Market Intel":
 
         # Demographics finding
         if scorecard.demographics.total_score >= 20:
-            findings.append(f"✅ Strong demographics: {scorecard.demographics.population_3mi:,} population with ${scorecard.demographics.median_income:,} median income")
+            findings.append(f"✅ Strong demographics: {scorecard.demographics.population_3mi:,} population (3-mile) with ${scorecard.demographics.median_income:,} median income")
         else:
             findings.append(f"⚠️ Moderate demographics: Consider competitive advantages needed")
 
         # Supply/demand finding
         if market.sf_per_capita_3mi < 5.5:
-            findings.append(f"✅ Undersupplied market: {market.sf_per_capita_3mi:.2f} SF/capita (target: 5-7)")
+            findings.append(f"✅ Undersupplied market: {market.sf_per_capita_3mi:.2f} SF/capita (3-mile)")
         elif market.sf_per_capita_3mi > 7.0:
-            findings.append(f"⚠️ Oversupplied market: {market.sf_per_capita_3mi:.2f} SF/capita")
+            findings.append(f"⚠️ Oversupplied market: {market.sf_per_capita_3mi:.2f} SF/capita (3-mile)")
 
         # Score-based finding
         if scorecard.total_score >= 85:
@@ -1316,6 +1467,34 @@ elif page == "🤖 AI Feasibility Report":
 
     st.markdown("---")
 
+    # Example Studies Upload
+    with st.expander("📚 Upload Example Studies (Optional - Improves AI Output)", expanded=False):
+        st.markdown("""
+        Upload high-quality example feasibility studies (PDF or text) to improve the AI's output.
+        The AI will learn from these examples to match your firm's style, depth, and formatting.
+        """)
+
+        example_files = st.file_uploader(
+            "Upload example reports",
+            type=['pdf', 'txt', 'md'],
+            accept_multiple_files=True,
+            help="Upload 1-3 example feasibility studies"
+        )
+
+        if example_files:
+            example_dir = Path(current_dir) / "src" / "data" / "example_studies"
+            example_dir.mkdir(parents=True, exist_ok=True)
+
+            for uploaded_file in example_files:
+                file_path = example_dir / uploaded_file.name
+                with open(file_path, "wb") as f:
+                    f.write(uploaded_file.getbuffer())
+
+            st.success(f"✅ Uploaded {len(example_files)} example study files")
+            st.info("These examples will be used to improve the AI-generated report quality")
+
+    st.markdown("---")
+
     # Generation Controls
     st.markdown("### 🚀 Generate Report")
 
@@ -1419,14 +1598,42 @@ elif page == "🤖 AI Feasibility Report":
                         with st.expander(f"📋 {section_name.replace('_', ' ').title()}", expanded=False):
                             st.markdown(content)
 
-                    # Offer download (would need PDF conversion)
-                    st.download_button(
-                        label="📥 Download Report (JSON)",
-                        data=str(report.report_sections),
-                        file_name=f"Feasibility_Report_{datetime.now().strftime('%Y%m%d')}.txt",
-                        mime="text/plain",
-                        type="primary"
-                    )
+                    # Generate PDF report
+                    try:
+                        from src.pdf_report_generator import PDFReportGenerator
+
+                        # Prepare data for PDF generator
+                        pdf_data = {
+                            'address': site_address or project_name,
+                            'ai_results': report.report_sections,  # AI-generated sections
+                            'inputs': {
+                                'project_name': project_name,
+                                'proposed_nrsf': proposed_nrsf,
+                                'land_cost': land_cost
+                            }
+                        }
+
+                        # Generate PDF
+                        pdf_gen = PDFReportGenerator()
+                        pdf_bytes = pdf_gen.generate_full_report(pdf_data)
+
+                        # Offer PDF download
+                        st.download_button(
+                            label="📥 Download Report (PDF)",
+                            data=pdf_bytes,
+                            file_name=f"Feasibility_Report_{datetime.now().strftime('%Y%m%d')}.pdf",
+                            mime="application/pdf",
+                            type="primary"
+                        )
+                    except Exception as pdf_error:
+                        st.warning(f"PDF generation failed: {pdf_error}")
+                        # Fallback to text download
+                        st.download_button(
+                            label="📥 Download Report (Text)",
+                            data=str(report.report_sections),
+                            file_name=f"Feasibility_Report_{datetime.now().strftime('%Y%m%d')}.txt",
+                            mime="text/plain"
+                        )
 
                 except Exception as e:
                     st.error(f"Report generation failed: {e}")

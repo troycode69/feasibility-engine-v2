@@ -127,13 +127,18 @@ def merge_competitor_rates(tractiq_data: Dict, scraper_competitors: List[Dict]) 
         for pdf_data in tractiq_data.values():
             competitors = pdf_data.get('competitors', [])
             for comp in competitors:
+                # Use name if available, otherwise use address for deduplication
                 name = comp.get('name', '').lower().strip()
+                address = comp.get('address', '').lower().strip()
 
-                # Skip if duplicate or no name
-                if not name or name in seen_names:
+                # Use address as fallback identifier if no name
+                identifier = name if name else address
+
+                # Skip if duplicate or no identifier
+                if not identifier or identifier in seen_names:
                     continue
 
-                seen_names.add(name)
+                seen_names.add(identifier)
                 tractiq_count += 1
 
                 # Extract rates by unit size - check all keys
