@@ -631,6 +631,8 @@ if page == "📝 Project Inputs":
     market_supply = {}
     demographics = {}
     sf_per_capita = {}
+    full_market_data = None
+
     if project_address:
         # Get cached TractiQ data with user-selected radius (default 5-mile)
         selected_radius = st.session_state.get('analysis_radius', 5)
@@ -651,6 +653,15 @@ if page == "📝 Project Inputs":
             filtered_comps = [c for c in all_competitors
                              if c.get('distance_miles') is not None
                              and c.get('distance_miles') <= selected_radius]
+
+            # AUTO-POPULATE: Set session state when cached data is found
+            market_id = cache._generate_market_id(project_address)
+            st.session_state.tractiq_market_id = market_id
+            st.session_state.property_data = {
+                "name": project_name or project_address,
+                "address": project_address,
+                "market_id": market_id
+            }
 
         # Also get pdf_sources data for backwards compatibility
         cached_data = get_cached_tractiq_data(project_address, site_address=project_address, radius_miles=selected_radius)
@@ -676,21 +687,33 @@ if page == "📝 Project Inputs":
                 'sf_per_capita': sf_per_capita
             }
 
-    # Show cached data status
-    if cached_data and cached_stats:
+    # Show cached data status - AUTO-POPULATE when data is found
+    if full_market_data and cached_stats:
         comp_count = cached_stats.get('total_competitors', 0)
-        st.success(f"✅ Market data loaded - {comp_count} competitors within {selected_radius} miles")
-        col1, col2 = st.columns(2)
-        col1.metric(f"Competitors ({selected_radius}mi)", comp_count)
-        col2.metric("Source", "TractiQ")
+        demo = cached_stats.get('demographics', {})
+        sf_analysis = cached_stats.get('sf_per_capita', {})
 
-        # Auto-set the tractiq_market_id from cached data
-        if "tractiq_market_id" not in st.session_state or not st.session_state.tractiq_market_id:
-            # Use the normalized market_id from the cache
-            # The cache generates this by normalizing the address
-            cache = TractIQCache()
-            market_id = cache._generate_market_id(project_address)
-            st.session_state.tractiq_market_id = market_id
+        # Show comprehensive data summary
+        st.success(f"🎯 **Data Found!** Market data loaded for this site.")
+
+        # Show key metrics in a prominent way
+        col1, col2, col3, col4 = st.columns(4)
+
+        # Default to 3-mile for display
+        radius_mi = st.session_state.get('analysis_radius', 3)
+        radius_key = f"facility_count_{radius_mi}mi"
+        facility_count = market_supply.get(radius_key, comp_count)
+
+        col1.metric(f"Competitors ({radius_mi}mi)", facility_count)
+        pop = demo.get(f'population_{radius_mi}mi', 0)
+        if pop:
+            col2.metric("Population", f"{int(pop):,}")
+        income = demo.get(f'median_income_{radius_mi}mi', 0)
+        if income:
+            col3.metric("Median Income", f"${int(income):,}")
+        sf_cap = sf_analysis.get(f'sf_per_capita_{radius_mi}mi', 0)
+        if sf_cap:
+            col4.metric("SF/Capita", f"{sf_cap:.2f}")
 
         # Add radius selector
         st.markdown("#### 📍 Analysis Radius")
@@ -732,9 +755,11 @@ if page == "📝 Project Inputs":
             if sf_per_cap:
                 col3.metric("SF/Capita", f"{sf_per_cap:.2f}")
 
-        st.info("You can upload additional TractiQ files below to add to the cached data, or proceed with analysis using existing data.")
+        st.info("✅ **Ready to analyze!** You can upload additional TractiQ files or proceed directly to generate a feasibility report.")
+    elif project_address:
+        st.warning(f"📭 No cached data found for this address. Upload TractiQ files to build the market database.")
     else:
-        st.info("Upload TractiQ competitor reports (PDF, CSV, Excel) to enhance market analysis with detailed rate data by unit size and climate control.")
+        st.info("👆 Enter a site address above to check for existing market data, or upload TractiQ reports.")
 
     uploaded_files = st.file_uploader(
         "Drop TractiQ Reports Here",
