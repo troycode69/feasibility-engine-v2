@@ -628,13 +628,28 @@ if page == "📝 Project Inputs":
 
     cached_data = None
     cached_stats = None
+    market_supply = {}
     if project_address:
         # Get cached TractiQ data with user-selected radius (default 5-mile)
         selected_radius = st.session_state.get('analysis_radius', 5)
+
+        # First get the full market data to access market_supply counts
+        cache = TractIQCache()
+        full_market_data = cache.get_market_data(project_address)
+        if full_market_data:
+            agg_data = full_market_data.get('aggregated_data', {})
+            market_supply = agg_data.get('market_supply', {})
+
+        # Then get filtered competitor data
         cached_data = get_cached_tractiq_data(project_address, site_address=project_address, radius_miles=selected_radius)
         if cached_data:
-            # Calculate stats from data
-            total_competitors = sum(len(pdf.get('competitors', [])) for pdf in cached_data.values())
+            # Use authoritative facility counts from TractiQ SF per Capita report
+            radius_key = f"facility_count_{selected_radius}mi"
+            total_competitors = market_supply.get(radius_key, 0)
+
+            # Fallback to counting if market_supply not available
+            if total_competitors == 0:
+                total_competitors = sum(len(pdf.get('competitors', [])) for pdf in cached_data.values())
 
             cached_stats = {
                 'total_competitors': total_competitors,
@@ -651,7 +666,7 @@ if page == "📝 Project Inputs":
         comp_count = cached_stats.get('total_competitors', 0)
         st.success(f"✅ Market data loaded - {comp_count} competitors within {selected_radius} miles")
         col1, col2 = st.columns(2)
-        col1.metric("Competitors (5mi)", comp_count)
+        col1.metric(f"Competitors ({selected_radius}mi)", comp_count)
         col2.metric("Source", "TractiQ")
 
         # Auto-set the tractiq_market_id from cached data
@@ -1019,77 +1034,61 @@ elif page == "📊 Market Intel":
 
     try:
         from src.rate_merger import merge_competitor_rates
-        from src.tractiq_cache import get_cached_tractiq_data
+        from src.tractiq_cache import get_cached_tractiq_data, TractIQCache
 
-        # Get TractiQ data from cache, filtered to 5.5-mile radius of CURRENT SITE
+        # Get TractiQ data from cache
         tractiq_data = {}
         market_id = st.session_state.get("tractiq_market_id")
         project_address = st.session_state.property_data.get('address', '')
+        selected_radius = st.session_state.get('analysis_radius', 5)
 
-        st.write(f"🔍 DEBUG - Cache lookup:")
-        st.write(f"  market_id: '{market_id}'")
-        st.write(f"  project_address: '{project_address}'")
+        # Get full market data for authoritative counts
+        market_supply = {}
+        cache = TractIQCache()
+        full_market_data = cache.get_market_data(project_address)
+        if full_market_data:
+            agg_data = full_market_data.get('aggregated_data', {})
+            market_supply = agg_data.get('market_supply', {})
 
         if market_id:
             if project_address:
                 # Get TractiQ data filtered to user-selected radius
-                # IMPORTANT: Pass project_address (not market_id) for cache lookup
-                selected_radius = st.session_state.get('analysis_radius', 5)
                 tractiq_data = get_cached_tractiq_data(
-                    project_address,  # Use address for lookup, not pre-normalized market_id
-                    site_address=project_address,  # Use stored coordinates for instant filtering
+                    project_address,
+                    site_address=project_address,
                     radius_miles=selected_radius
                 )
 
-                # Show filtering results
-                if tractiq_data:
+                # Use authoritative facility count from TractiQ
+                radius_key = f"facility_count_{selected_radius}mi"
+                facility_count = market_supply.get(radius_key, 0)
+
+                if tractiq_data and facility_count > 0:
+                    st.info(f"📊 **{facility_count} facilities** within {selected_radius}-mile radius (TractiQ verified)")
+                elif tractiq_data:
+                    # Fallback to counting
                     total_comps = sum(len(pdf.get('competitors', [])) for pdf in tractiq_data.values())
-                    st.write(f"  ✅ Returned: {total_comps} competitors after 5.5-mile filter")
-                else:
-                    st.write(f"  ⚠️ Cache returned EMPTY after filtering")
+                    st.info(f"📊 {total_comps} competitors loaded from cache")
             else:
                 st.warning("⚠️ No project address in session state")
         else:
             st.warning("⚠️ No tractiq_market_id - upload TractiQ CSV on Inputs page first")
 
-        # Scraper disabled - focusing on TractiQ accuracy first
+        # Scraper disabled - focusing on TractiQ accuracy
         scraper_competitors = []
-
-        # DEBUG: Show what we're passing to merger
-        st.write("🔍 DEBUG - Data being passed to merger:")
-        st.write(f"TractiQ data keys: {list(tractiq_data.keys()) if tractiq_data else 'EMPTY'}")
-        if tractiq_data:
-            for pdf_name, pdf_data in tractiq_data.items():
-                comps = pdf_data.get('competitors', [])
-                st.write(f"  - {pdf_name}: {len(comps)} competitors")
-                if comps:
-                    sample = comps[0]
-                    st.write(f"    Sample keys: {list(sample.keys())}")
-                    rate_keys = [k for k in sample.keys() if 'rate' in k.lower()]
-                    st.write(f"    Rate keys: {rate_keys}")
-                    if rate_keys:
-                        st.write(f"    Sample value for {rate_keys[0]}: {sample.get(rate_keys[0])}")
-        st.write(f"Scraper competitors: {len(scraper_competitors)}")
 
         # Merge the data
         merged_rates = merge_competitor_rates(tractiq_data, scraper_competitors)
 
-        # DEBUG: Show merge results
-        st.write("🔍 DEBUG - Merge results:")
-        st.write(f"Total competitors: {merged_rates['summary']['total_competitors']}")
-        st.write(f"TractiQ count: {merged_rates['summary']['tractiq_count']}")
-        st.write(f"Unit sizes: {merged_rates['summary']['unit_sizes']}")
-        for size in ['5x10', '10x10', '10x15']:
-            if size in merged_rates['by_unit_size']:
-                data = merged_rates['by_unit_size'][size]
-                st.write(f"{size}: NC={len(data['non_climate']['rates'])} rates, C={len(data['climate']['rates'])} rates")
-
-        # Display summary
+        # Display summary using authoritative facility count
         summary = merged_rates['summary']
+        radius_key = f"facility_count_{selected_radius}mi"
+        authoritative_count = market_supply.get(radius_key, summary['total_competitors'])
+
         col1, col2, col3 = st.columns(3)
-        col1.metric("Total Competitors", summary['total_competitors'])
-        col2.metric("TractiQ Sources", summary['tractiq_count'])
-        col3.metric("Scraped Sources", summary['scraper_count'])
+        col1.metric(f"Facilities ({selected_radius}mi)", authoritative_count)
+        col2.metric("With Rate Data", summary['tractiq_count'])
+        col3.metric("Data Source", "TractiQ")
 
         # Skip the unit size summary table - user doesn't want it
 
