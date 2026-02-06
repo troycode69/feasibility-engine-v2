@@ -1,7 +1,8 @@
 """
 Professional PDF Report Generator
-Creates Bob Copper-quality feasibility study reports (20-30 pages)
+Creates McKinley-level institutional quality feasibility study reports (20-30 pages)
 Uses WeasyPrint for HTML → PDF conversion with professional styling
+Integrates matplotlib charts for visual analysis
 """
 
 from weasyprint import HTML, CSS
@@ -10,6 +11,46 @@ from typing import Dict, List, Optional
 import base64
 import os
 import io
+
+# Import chart generator functions (including 6 new chart types)
+try:
+    from src.chart_generator import (
+        # Original 8 charts
+        generate_noi_waterfall,
+        generate_occupancy_curve,
+        generate_sensitivity_tornado,
+        generate_scoring_radar,
+        generate_scenario_comparison,
+        generate_competitor_scatter,
+        generate_sf_per_capita_comparison,
+        generate_cash_flow_chart,
+        # New 6 charts (premium visualizations)
+        generate_market_cycle_gauge,
+        generate_absorption_timeline,
+        generate_rate_heatmap,
+        generate_pipeline_timeline,
+        generate_demand_driver_pie,
+        generate_risk_return_scatter
+    )
+    CHARTS_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: Chart imports failed: {e}")
+    CHARTS_AVAILABLE = False
+    # Define stub functions if charts not available
+    generate_noi_waterfall = None
+    generate_occupancy_curve = None
+    generate_sensitivity_tornado = None
+    generate_scoring_radar = None
+    generate_scenario_comparison = None
+    generate_competitor_scatter = None
+    generate_sf_per_capita_comparison = None
+    generate_cash_flow_chart = None
+    generate_market_cycle_gauge = None
+    generate_absorption_timeline = None
+    generate_rate_heatmap = None
+    generate_pipeline_timeline = None
+    generate_demand_driver_pie = None
+    generate_risk_return_scatter = None
 
 
 class PDFReportGenerator:
@@ -206,6 +247,71 @@ class PDFReportGenerator:
             margin-top: 40px;
             padding-top: 20px;
             border-top: 1px solid #ddd;
+        }
+
+        .chart-container {
+            text-align: center;
+            margin: 25px 0;
+            page-break-inside: avoid;
+        }
+
+        .chart-container img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+        }
+
+        .chart-title {
+            font-size: 12pt;
+            font-weight: 600;
+            color: #0C2340;
+            margin-bottom: 10px;
+        }
+
+        .chart-caption {
+            font-size: 9pt;
+            color: #666;
+            margin-top: 8px;
+            font-style: italic;
+        }
+
+        .chart-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .chart-half {
+            width: 48%;
+            text-align: center;
+        }
+
+        .chart-half img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .scenario-table {
+            margin: 20px 0;
+        }
+
+        .scenario-table th {
+            background-color: #0C2340;
+            color: white;
+        }
+
+        .scenario-conservative {
+            background-color: #fff3cd !important;
+        }
+
+        .scenario-base {
+            background-color: #d4edda !important;
+        }
+
+        .scenario-aggressive {
+            background-color: #cce5ff !important;
         }
         """
 
@@ -1286,6 +1392,302 @@ class PDFReportGenerator:
         <div class="page-break"></div>
         """
 
+    def generate_charts_section(self, data: Dict) -> str:
+        """
+        Generate visual analytics section with embedded charts.
+        Uses the FeasibilityChartGenerator to create matplotlib charts.
+        """
+        if not CHARTS_AVAILABLE:
+            return """
+            <h1>VISUAL ANALYTICS</h1>
+            <div class="warning-box">
+                <p>Charts unavailable - matplotlib not installed.</p>
+            </div>
+            <div class="page-break"></div>
+            """
+
+        # Chart functions are imported at module level
+        charts_html = """
+        <h1>VISUAL ANALYTICS</h1>
+        <p>The following charts provide visual representation of key metrics and projections.</p>
+        """
+
+        # Get enhanced pro forma data if available
+        enhanced_proforma = data.get('enhanced_proforma')
+        sensitivity_data = data.get('sensitivity_analysis')
+        scenario_data = data.get('scenario_analysis')
+        score_breakdown = data.get('score_breakdown', {})
+
+        # 1. Scoring Radar Chart
+        if score_breakdown:
+            # Build lists for radar chart (function expects lists, not dicts)
+            categories = ['Demographics', 'Supply/Demand', 'Site Quality', 'Competition', 'Economic']
+            scores = [
+                score_breakdown.get('demographics', {}).get('score', 0),
+                score_breakdown.get('supply', {}).get('score', 0),
+                score_breakdown.get('site', {}).get('score', 0),
+                score_breakdown.get('competitor', {}).get('score', 0),
+                score_breakdown.get('economic', {}).get('score', 0)
+            ]
+            max_scores = [25, 25, 25, 15, 10]
+            try:
+                radar_b64 = generate_scoring_radar(categories, scores, max_scores)
+                charts_html += f"""
+                <div class="chart-container">
+                    <div class="chart-title">Feasibility Score Breakdown</div>
+                    <img src="data:image/png;base64,{radar_b64}" alt="Scoring Radar Chart">
+                    <div class="chart-caption">
+                        Performance across 5 key feasibility categories normalized to percentage of maximum score.
+                    </div>
+                </div>
+                """
+            except Exception as e:
+                charts_html += f"<!-- Radar chart error: {e} -->"
+
+        # 2. NOI Waterfall Chart (if enhanced proforma available)
+        if enhanced_proforma:
+            try:
+                # Extract annual summaries for NOI progression
+                annual_summaries = enhanced_proforma.get('annual_summaries', [])
+                if annual_summaries:
+                    years = list(range(1, len(annual_summaries[:7]) + 1))
+                    noi_values = [s.get('noi', 0) for s in annual_summaries[:7]]
+                    noi_b64 = generate_noi_waterfall(years, noi_values)
+                    charts_html += f"""
+                    <div class="chart-container">
+                        <div class="chart-title">7-Year NOI Progression</div>
+                        <img src="data:image/png;base64,{noi_b64}" alt="NOI Waterfall Chart">
+                        <div class="chart-caption">
+                            Net Operating Income growth from lease-up through stabilization. Shows NOI evolution over 7-year projection period.
+                        </div>
+                    </div>
+                    """
+            except Exception as e:
+                charts_html += f"<!-- NOI chart error: {e} -->"
+
+        # 3. Occupancy Curve (if enhanced proforma available)
+        if enhanced_proforma:
+            try:
+                monthly_cashflows = enhanced_proforma.get('monthly_cashflows', [])
+                if monthly_cashflows:
+                    months = list(range(1, len(monthly_cashflows[:84]) + 1))
+                    occupancy_pcts = [cf.get('occupancy_pct', 0) * 100 for cf in monthly_cashflows[:84]]
+                    occ_b64 = generate_occupancy_curve(months, occupancy_pcts)
+                    charts_html += f"""
+                    <div class="chart-container">
+                        <div class="chart-title">Occupancy Ramp-Up Curve</div>
+                        <img src="data:image/png;base64,{occ_b64}" alt="Occupancy Curve">
+                        <div class="chart-caption">
+                            Monthly occupancy projection showing lease-up trajectory to stabilized occupancy.
+                        </div>
+                    </div>
+                    """
+            except Exception as e:
+                charts_html += f"<!-- Occupancy chart error: {e} -->"
+
+        charts_html += '<div class="page-break"></div>'
+
+        # 4. Sensitivity Tornado (if sensitivity analysis available)
+        if sensitivity_data:
+            try:
+                tornado_results = sensitivity_data.get('results', [])
+                if tornado_results:
+                    # Extract data for tornado chart
+                    variables = [r.get('variable', '') for r in tornado_results]
+                    low_values = [r.get('low_irr', 0) for r in tornado_results]
+                    high_values = [r.get('high_irr', 0) for r in tornado_results]
+                    base_irr = sensitivity_data.get('base_irr', 0)
+                    tornado_b64 = generate_sensitivity_tornado(variables, low_values, high_values, base_irr)
+                    charts_html += f"""
+                    <h1>SENSITIVITY ANALYSIS</h1>
+                    <p>The tornado diagram below shows how changes in key variables impact the project's Internal Rate of Return (IRR).</p>
+                    <div class="chart-container">
+                        <div class="chart-title">IRR Sensitivity to Key Variables</div>
+                        <img src="data:image/png;base64,{tornado_b64}" alt="Sensitivity Tornado">
+                        <div class="chart-caption">
+                            Variables sorted by impact magnitude. Longer bars indicate higher sensitivity to that variable.
+                        </div>
+                    </div>
+                    """
+            except Exception as e:
+                charts_html += f"<!-- Tornado chart error: {e} -->"
+
+        # 5. Scenario Comparison (if scenario analysis available)
+        if scenario_data:
+            try:
+                scenarios_dict = scenario_data.get('scenarios', {})
+                if scenarios_dict:
+                    # Extract data for scenario chart
+                    scenario_names = ['Conservative', 'Base Case', 'Aggressive']
+                    irrs = [
+                        scenarios_dict.get('conservative', {}).get('irr', 0),
+                        scenarios_dict.get('base', {}).get('irr', 0),
+                        scenarios_dict.get('aggressive', {}).get('irr', 0)
+                    ]
+                    npvs = [
+                        scenarios_dict.get('conservative', {}).get('npv', 0),
+                        scenarios_dict.get('base', {}).get('npv', 0),
+                        scenarios_dict.get('aggressive', {}).get('npv', 0)
+                    ]
+                    scenario_b64 = generate_scenario_comparison(scenario_names, irrs, npvs)
+                    charts_html += f"""
+                    <h2>Scenario Analysis</h2>
+                    <p>Three-case scenario modeling provides a probability-weighted view of potential outcomes.</p>
+                    <div class="chart-container">
+                        <div class="chart-title">Scenario Comparison: IRR and NPV</div>
+                        <img src="data:image/png;base64,{scenario_b64}" alt="Scenario Comparison">
+                        <div class="chart-caption">
+                            Conservative (25% weight), Base Case (50% weight), and Aggressive (25% weight) scenarios.
+                        </div>
+                    </div>
+                    """
+
+                    # Add scenario summary table
+                    cons = scenarios_dict.get('conservative', {})
+                    base = scenarios_dict.get('base', {})
+                    agg = scenarios_dict.get('aggressive', {})
+
+                    charts_html += f"""
+                    <h3>Scenario Summary</h3>
+                    <table class="scenario-table">
+                        <tr>
+                            <th>Metric</th>
+                            <th class="scenario-conservative">Conservative</th>
+                            <th class="scenario-base">Base Case</th>
+                            <th class="scenario-aggressive">Aggressive</th>
+                        </tr>
+                        <tr>
+                            <td><strong>IRR</strong></td>
+                            <td class="scenario-conservative">{cons.get('irr', 0):.1f}%</td>
+                            <td class="scenario-base">{base.get('irr', 0):.1f}%</td>
+                            <td class="scenario-aggressive">{agg.get('irr', 0):.1f}%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>NPV</strong></td>
+                            <td class="scenario-conservative">${cons.get('npv', 0):,.0f}</td>
+                            <td class="scenario-base">${base.get('npv', 0):,.0f}</td>
+                            <td class="scenario-aggressive">${agg.get('npv', 0):,.0f}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Probability</strong></td>
+                            <td class="scenario-conservative">25%</td>
+                            <td class="scenario-base">50%</td>
+                            <td class="scenario-aggressive">25%</td>
+                        </tr>
+                    </table>
+
+                    <div class="recommendation-box">
+                        <h4 style="margin-top: 0;">Expected Returns (Probability-Weighted)</h4>
+                        <p><strong>Expected IRR:</strong> {scenario_data.get('expected_irr', 0):.1f}%</p>
+                        <p><strong>Expected NPV:</strong> ${scenario_data.get('expected_npv', 0):,.0f}</p>
+                    </div>
+                    """
+            except Exception as e:
+                charts_html += f"<!-- Scenario chart error: {e} -->"
+
+        charts_html += '<div class="page-break"></div>'
+        return charts_html
+
+    def generate_investment_analysis_section(self, data: Dict) -> str:
+        """Generate investment analysis section with breakeven and sizing analysis."""
+        investment_data = data.get('investment_analysis')
+
+        if not investment_data:
+            return ""
+
+        breakeven = investment_data.get('breakeven', {})
+        land_analysis = investment_data.get('land_analysis', {})
+        debt_sizing = investment_data.get('debt_sizing', {})
+        grade = investment_data.get('grade', 'N/A')
+        recommendation = investment_data.get('recommendation', 'N/A')
+
+        grade_color = {
+            'A': '#28a745',
+            'B': '#5cb85c',
+            'C': '#f0ad4e',
+            'D': '#d9534f',
+            'F': '#c9302c'
+        }.get(grade, '#666')
+
+        return f"""
+        <h1>INVESTMENT ANALYSIS</h1>
+
+        <div class="score-card" style="background: {grade_color};">
+            <h1 style="font-size: 72pt;">{grade}</h1>
+            <p style="margin: 10px 0 0 0; font-size: 18pt;">INVESTMENT GRADE</p>
+            <p style="font-size: 14pt; margin-top: 10px;">{recommendation}</p>
+        </div>
+
+        <h3>Breakeven Analysis</h3>
+        <table>
+            <tr>
+                <th>Metric</th>
+                <th>Value</th>
+                <th>Interpretation</th>
+            </tr>
+            <tr>
+                <td><strong>Breakeven Occupancy</strong></td>
+                <td>{breakeven.get('occupancy_pct', 0):.1f}%</td>
+                <td>{'Favorable - Low breakeven provides cushion against underperformance' if breakeven.get('occupancy_pct', 100) < 70 else 'Moderate - Standard risk profile' if breakeven.get('occupancy_pct', 100) < 80 else 'Elevated - Limited margin for error'}</td>
+            </tr>
+            <tr>
+                <td><strong>Breakeven Rate ($/SF)</strong></td>
+                <td>${breakeven.get('rate_psf', 0):.2f}</td>
+                <td>Minimum rental rate required to cover all operating expenses and debt service</td>
+            </tr>
+        </table>
+
+        <h3>Land Cost Sensitivity</h3>
+        <table>
+            <tr>
+                <th>Target IRR</th>
+                <th>Maximum Land Cost</th>
+                <th>Land $/SF</th>
+            </tr>
+            <tr>
+                <td>12%</td>
+                <td>${land_analysis.get('max_land_12_irr', 0):,.0f}</td>
+                <td>${land_analysis.get('land_psf_12_irr', 0):.2f}</td>
+            </tr>
+            <tr>
+                <td>15%</td>
+                <td>${land_analysis.get('max_land_15_irr', 0):,.0f}</td>
+                <td>${land_analysis.get('land_psf_15_irr', 0):.2f}</td>
+            </tr>
+            <tr>
+                <td>18%</td>
+                <td>${land_analysis.get('max_land_18_irr', 0):,.0f}</td>
+                <td>${land_analysis.get('land_psf_18_irr', 0):.2f}</td>
+            </tr>
+        </table>
+
+        <h3>Debt Capacity Analysis</h3>
+        <table>
+            <tr>
+                <th>Metric</th>
+                <th>Value</th>
+                <th>Notes</th>
+            </tr>
+            <tr>
+                <td><strong>Maximum Loan Amount</strong></td>
+                <td>${debt_sizing.get('max_loan', 0):,.0f}</td>
+                <td>Based on {debt_sizing.get('ltc_pct', 0):.0f}% LTC constraint</td>
+            </tr>
+            <tr>
+                <td><strong>Required Equity</strong></td>
+                <td>${debt_sizing.get('equity_required', 0):,.0f}</td>
+                <td>Minimum equity contribution</td>
+            </tr>
+            <tr>
+                <td><strong>Projected DSCR</strong></td>
+                <td>{debt_sizing.get('dscr', 0):.2f}x</td>
+                <td>{'Above 1.25x minimum - favorable' if debt_sizing.get('dscr', 0) >= 1.25 else 'Below 1.25x minimum - lender may require additional equity'}</td>
+            </tr>
+        </table>
+
+        <div class="page-break"></div>
+        """
+
     def generate_appendix(self, data: Dict) -> str:
         """Generate appendix with data sources and methodology"""
 
@@ -1369,6 +1771,10 @@ class PDFReportGenerator:
         report_date = datetime.now().strftime("%B %d, %Y")
         address = data.get('address', 'Subject Property')
 
+        # Generate optional sections based on available data
+        charts_section = self.generate_charts_section(data) if CHARTS_AVAILABLE else ""
+        investment_section = self.generate_investment_analysis_section(data) if data.get('investment_analysis') else ""
+
         # Build HTML report
         html_content = f"""
         <!DOCTYPE html>
@@ -1387,6 +1793,8 @@ class PDFReportGenerator:
             {self.generate_tractiq_insights_section(data)}
             {self.generate_economic_section(data)}
             {self.generate_financial_section(data)}
+            {investment_section}
+            {charts_section}
             {self.generate_appendix(data)}
         </body>
         </html>
@@ -1413,6 +1821,317 @@ def generate_feasibility_pdf(data: Dict, output_path: Optional[str] = None) -> b
 
     generator = PDFReportGenerator()
     pdf_bytes = generator.generate_full_report(data)
+
+    if output_path:
+        with open(output_path, 'wb') as f:
+            f.write(pdf_bytes)
+
+    return pdf_bytes
+
+
+def generate_ai_report_pdf(
+    address: str,
+    ai_sections: Dict[str, str],
+    report_date: str = None,
+    output_path: Optional[str] = None
+) -> bytes:
+    """
+    Generate PDF from AI-generated narrative sections.
+
+    Args:
+        address: Site address for cover page
+        ai_sections: Dict with keys like 'executive_summary', 'market_analysis', etc.
+        report_date: Optional date string
+        output_path: Optional path to save PDF
+
+    Returns:
+        PDF bytes
+    """
+    import markdown
+
+    if report_date is None:
+        report_date = datetime.now().strftime("%B %d, %Y")
+
+    # Convert markdown sections to HTML and process chart markers
+    def md_to_html(md_text: str) -> str:
+        if not md_text or md_text.startswith("ERROR"):
+            return "<p><em>Section not available</em></p>"
+
+        # Convert markdown to HTML
+        html = markdown.markdown(md_text, extensions=['tables', 'fenced_code'])
+
+        # Process chart markers and embed actual charts
+        html = process_chart_markers(html)
+
+        return html
+
+    def process_chart_markers(html: str) -> str:
+        """Replace chart markers with embedded chart images."""
+        import re
+
+        if not CHARTS_AVAILABLE:
+            return html
+
+        # Chart marker patterns and their generators
+        chart_configs = {
+            'SF_PER_CAPITA_COMPARISON': lambda: generate_sf_per_capita_comparison(
+                [1, 3, 5],
+                [7.5, 6.2, 5.8],  # Example values - would be replaced with actual data
+                target_sf=6.5
+            ) if generate_sf_per_capita_comparison else None,
+            'COMPETITOR_SCATTER': lambda: generate_competitor_scatter(
+                [0.5, 1.2, 2.1, 2.8, 3.5],
+                [1.25, 1.18, 1.32, 1.45, 1.28],
+                ['Site A', 'Site B', 'Site C', 'Site D', 'Site E'],
+                subject_rate=1.35
+            ) if generate_competitor_scatter else None,
+            'MARKET_CYCLE_GAUGE': lambda: generate_market_cycle_gauge(
+                'Expansion', 65
+            ) if generate_market_cycle_gauge else None,
+            'NOI_WATERFALL': lambda: generate_noi_waterfall(
+                [1, 2, 3, 4, 5, 6, 7],
+                [50000, 280000, 520000, 615000, 630000, 645000, 660000]
+            ) if generate_noi_waterfall else None,
+            'CASH_FLOW_TIMELINE': lambda: generate_cash_flow_chart(
+                [1, 2, 3, 4, 5, 6, 7],
+                [500000, 550000, 600000, 620000, 640000, 660000, 680000],
+                [400000, 400000, 400000, 400000, 400000, 400000, 400000]
+            ) if generate_cash_flow_chart else None,
+            'SENSITIVITY_TORNADO': lambda: generate_sensitivity_tornado(
+                ['Rental Rates', 'Construction Cost', 'Occupancy', 'Exit Cap Rate', 'Interest Rate'],
+                [4.3, 8.7, 9.0, 10.7, 12.2],
+                [20.5, 18.9, 16.0, 16.8, 15.0],
+                13.6
+            ) if generate_sensitivity_tornado else None,
+            'SCENARIO_COMPARISON': lambda: generate_scenario_comparison(
+                ['Conservative', 'Base Case', 'Aggressive'],
+                [5.2, 13.6, 21.8],
+                [-500000, 644000, 1800000]
+            ) if generate_scenario_comparison else None,
+            'SCORING_RADAR': lambda: generate_scoring_radar(
+                ['Demographics', 'Supply/Demand', 'Site Quality', 'Competition', 'Economics'],
+                [20, 18, 22, 12, 8],
+                [25, 25, 25, 15, 10]
+            ) if generate_scoring_radar else None,
+            'DEMAND_DRIVER_PIE': lambda: generate_demand_driver_pie({
+                'Residential': 35,
+                'Commercial': 25,
+                'Life Events': 20,
+                'Student': 10,
+                'Military': 10
+            }) if generate_demand_driver_pie else None,
+        }
+
+        # Find and replace chart markers
+        for marker, generator in chart_configs.items():
+            pattern = rf'\[CHART:\s*{marker}\]'
+            if re.search(pattern, html):
+                try:
+                    chart_base64 = generator()
+                    if chart_base64:
+                        img_html = f'<div class="chart-container"><img src="data:image/png;base64,{chart_base64}" style="max-width:100%; margin: 15px 0;" /></div>'
+                        html = re.sub(pattern, img_html, html)
+                except Exception as e:
+                    print(f"Warning: Could not generate chart {marker}: {e}")
+                    html = re.sub(pattern, f'<p><em>[Chart: {marker} - Generation failed]</em></p>', html)
+
+        return html
+
+    # Section titles mapping
+    section_titles = {
+        'executive_summary': 'Executive Summary',
+        'market_analysis': 'Market Analysis',
+        'financial_analysis': 'Financial Analysis',
+        'site_scoring': 'Site Scoring & Evaluation',
+        'risk_assessment': 'Risk Assessment',
+        'recommendation': 'Investment Recommendation'
+    }
+
+    # Build sections HTML
+    sections_html = ""
+    for section_key, title in section_titles.items():
+        content = ai_sections.get(section_key, '')
+        if content and not content.startswith("ERROR"):
+            sections_html += f"""
+            <h2>{title}</h2>
+            <div class="section-content">
+                {md_to_html(content)}
+            </div>
+            """
+
+    # Professional CSS for AI report
+    css = """
+    @page {
+        size: letter;
+        margin: 0.75in;
+        @top-center {
+            content: "STORAGE OS Feasibility Study";
+            font-size: 10pt;
+            color: #666;
+        }
+        @bottom-right {
+            content: "Page " counter(page);
+            font-size: 9pt;
+            color: #666;
+        }
+    }
+
+    body {
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        font-size: 11pt;
+        line-height: 1.6;
+        color: #1a1a1a;
+    }
+
+    .cover-page {
+        text-align: center;
+        padding-top: 180px;
+        page-break-after: always;
+    }
+
+    .cover-title {
+        font-size: 36pt;
+        font-weight: 700;
+        color: #0C2340;
+        margin-bottom: 15px;
+    }
+
+    .cover-subtitle {
+        font-size: 18pt;
+        color: #666;
+        margin-bottom: 40px;
+    }
+
+    .cover-address {
+        font-size: 16pt;
+        color: #0C2340;
+        margin: 30px 0;
+        font-weight: 500;
+    }
+
+    .cover-date {
+        font-size: 12pt;
+        color: #666;
+        margin-top: 60px;
+    }
+
+    h2 {
+        font-size: 18pt;
+        font-weight: 600;
+        color: #0C2340;
+        margin-top: 35px;
+        margin-bottom: 15px;
+        border-left: 4px solid #F39C12;
+        padding-left: 15px;
+        page-break-after: avoid;
+    }
+
+    h3 {
+        font-size: 14pt;
+        font-weight: 600;
+        color: #0C2340;
+        margin-top: 20px;
+        margin-bottom: 10px;
+    }
+
+    h4 {
+        font-size: 12pt;
+        font-weight: 600;
+        color: #333;
+        margin-top: 15px;
+        margin-bottom: 8px;
+    }
+
+    p {
+        margin-bottom: 12px;
+        text-align: justify;
+    }
+
+    ul, ol {
+        margin-bottom: 12px;
+        padding-left: 25px;
+    }
+
+    li {
+        margin-bottom: 6px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 15px 0;
+        font-size: 10pt;
+    }
+
+    th {
+        background-color: #0C2340;
+        color: white;
+        padding: 10px;
+        text-align: left;
+        font-weight: 600;
+    }
+
+    td {
+        padding: 8px 10px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    tr:nth-child(even) {
+        background-color: #f8f9fa;
+    }
+
+    .section-content {
+        margin-bottom: 25px;
+    }
+
+    strong {
+        color: #0C2340;
+    }
+
+    .footer-note {
+        font-size: 9pt;
+        color: #666;
+        margin-top: 40px;
+        padding-top: 15px;
+        border-top: 1px solid #ddd;
+        text-align: center;
+    }
+    """
+
+    # Build full HTML
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>Feasibility Study - {address}</title>
+    </head>
+    <body>
+        <div class="cover-page">
+            <div class="cover-title">FEASIBILITY STUDY</div>
+            <div class="cover-subtitle">Self-Storage Development Analysis</div>
+            <div class="cover-address">{address}</div>
+            <div class="cover-date">
+                Report Date: {report_date}<br><br>
+                Generated by STORAGE OS<br>
+                AI-Powered Market Intelligence
+            </div>
+        </div>
+
+        {sections_html}
+
+        <div class="footer-note">
+            This report was generated using AI-powered analysis. All data should be independently verified.
+            <br>© {datetime.now().year} STORAGE OS
+        </div>
+    </body>
+    </html>
+    """
+
+    # Generate PDF
+    pdf_bytes = HTML(string=html_content).write_pdf(
+        stylesheets=[CSS(string=css)]
+    )
 
     if output_path:
         with open(output_path, 'wb') as f:

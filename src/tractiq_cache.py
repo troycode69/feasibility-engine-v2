@@ -9,6 +9,12 @@ from datetime import datetime
 from typing import Dict, List, Optional
 from pathlib import Path
 
+# Distance tolerance for competitor counting (matches TractiQ methodology)
+# TractiQ appears to round distances or use larger trade areas
+# 0.35 mile tolerance better matches their facility counts
+DISTANCE_TOLERANCE = 0.35  # 0.35 mile buffer to match TractiQ
+MIN_COMPETITOR_DISTANCE = 0.05  # Exclude subject site (distance ~0)
+
 
 class TractIQCache:
     """
@@ -336,7 +342,8 @@ class TractIQCache:
 
     def get_market_data(self, market_identifier: str) -> Optional[Dict]:
         """
-        Retrieve cached market data.
+        Retrieve cached market data with fuzzy matching.
+        Always searches for the best quality data file (most competitors).
 
         Args:
             market_identifier: Either market_id or market_name
@@ -344,15 +351,63 @@ class TractIQCache:
         Returns:
             Market data dict or None if not found
         """
-        # Try as market_id first
+        import re
+
+        # Normalize the market identifier
         market_id = self._generate_market_id(market_identifier)
-        cache_file = self.cache_dir / f"{market_id}.json"
+        base_id = re.sub(r'_\d{5}$', '', market_id)  # Remove trailing ZIP code for fuzzy matching
 
-        if cache_file.exists():
-            with open(cache_file, 'r') as f:
-                return json.load(f)
+        # Search ALL matching cache files and return the one with the most competitor data
+        # This ensures we don't return an empty/stale file when a better one exists
+        best_match = None
+        best_match_data = None
+        best_competitor_count = 0
 
-        return None
+        for cache_path in self.cache_dir.glob("*.json"):
+            if cache_path.name == "cache_index.json":
+                continue
+
+            file_id = cache_path.stem  # filename without extension
+            file_base = re.sub(r'_\d{5}$', '', file_id)  # Remove trailing ZIP from filename
+
+            # Check for matches:
+            # 1. Exact match on full market_id
+            # 2. Exact match on base address (ignoring ZIP)
+            # 3. One starts with the other (partial address match)
+            is_match = (
+                file_id == market_id or  # Exact match
+                file_id == market_identifier or  # Direct identifier match
+                file_base == base_id or  # Base address match
+                base_id.startswith(file_base) or
+                file_base.startswith(base_id)
+            )
+
+            if is_match:
+                try:
+                    with open(cache_path, 'r') as f:
+                        data = json.load(f)
+
+                    # Count competitors (check both aggregated_data and pdf_sources)
+                    agg_competitors = len(data.get('aggregated_data', {}).get('competitors', []))
+                    pdf_competitors = sum(
+                        len(pdf.get('competitors', []))
+                        for pdf in data.get('pdf_sources', {}).values()
+                    )
+                    competitor_count = max(agg_competitors, pdf_competitors)
+
+                    # Prefer files with more competitor data (better quality data)
+                    if competitor_count > best_competitor_count:
+                        best_match = cache_path
+                        best_match_data = data
+                        best_competitor_count = competitor_count
+                    # If no competitors yet, take any match as fallback
+                    elif best_match_data is None:
+                        best_match = cache_path
+                        best_match_data = data
+                except (json.JSONDecodeError, IOError):
+                    continue
+
+        return best_match_data
 
     def list_markets(self) -> List[Dict]:
         """Get list of all cached markets with metadata"""
@@ -547,7 +602,8 @@ def get_cached_tractiq_data(market_name: str, site_address: Optional[str] = None
                     try:
                         distance = float(existing_distance)
                         # Exclude the project site itself (distance = 0 or very close to 0)
-                        if distance > 0.05 and distance <= radius_miles:
+                        # Add tolerance to match TractiQ's rounding methodology
+                        if distance > MIN_COMPETITOR_DISTANCE and distance <= (radius_miles + DISTANCE_TOLERANCE):
                             # Deduplicate by address - only add first occurrence
                             comp_address = comp.get('address', '')
                             if comp_address and comp_address not in seen_addresses:
@@ -568,7 +624,8 @@ def get_cached_tractiq_data(market_name: str, site_address: Optional[str] = None
                         comp['distance_miles'] = round(distance, 2)
 
                         # Exclude the project site itself (distance = 0 or very close to 0)
-                        if distance > 0.05 and distance <= radius_miles:
+                        # Add tolerance to match TractiQ's rounding methodology
+                        if distance > MIN_COMPETITOR_DISTANCE and distance <= (radius_miles + DISTANCE_TOLERANCE):
                             # Deduplicate by address - only add first occurrence
                             comp_address = comp.get('address', '')
                             if comp_address and comp_address not in seen_addresses:

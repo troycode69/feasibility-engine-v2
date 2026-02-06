@@ -292,9 +292,11 @@ def run_analytics(inputs: ProjectInputs, custom_demographics: Optional[Dict] = N
 
     # Step 2: Load TractiQ data first (to get demographics)
     print("[2/7] Loading market intelligence...")
+    print(f"      Looking for market_id: {inputs.tractiq_market_id}")
     tractiq_data = load_tractiq_data(inputs.tractiq_market_id)
     if tractiq_data:
         print(f"      ✓ TractiQ data loaded: {tractiq_data.get('competitor_count', 0)} competitors")
+        print(f"      ✓ Demographics keys: {list(tractiq_data.get('demographics', {}).keys())}")
     else:
         print("      ℹ No TractiQ data available")
 
@@ -334,21 +336,21 @@ def run_analytics(inputs: ProjectInputs, custom_demographics: Optional[Dict] = N
             "analysis_radius": analysis_radius  # Store for reference
         }
         print(f"      ✓ Using TractiQ demographics ({analysis_radius}-mile radius)")
-        print(f"      ✓ Population ({analysis_radius}-mile): {demographics['population']:,}")
-        print(f"      ✓ Median Income: ${demographics['median_income']:,}")
-        print(f"      ✓ Renter-Occupied: {demographics['renter_occupied_pct']:.1f}%")
+        print(f"      ✓ Population ({analysis_radius}-mile): {demographics.get('population', 0):,}")
+        print(f"      ✓ Median Income: ${demographics.get('median_income', 0):,}")
+        print(f"      ✓ Renter-Occupied: {demographics.get('renter_occupied_pct', 0):.1f}%")
     elif custom_demographics:
         demographics = custom_demographics
         print(f"      ✓ Using custom demographics")
-        print(f"      ✓ Population (3-mile): {demographics['population_3mi']:,}")
-        print(f"      ✓ Population (5-mile): {demographics['population_5mi']:,}")
-        print(f"      ✓ Median Income: ${demographics['median_income']:,}")
-        print(f"      ✓ Renter-Occupied: {demographics['renter_occupied_pct']}%")
+        print(f"      ✓ Population (3-mile): {demographics.get('population_3mi', 0):,}")
+        print(f"      ✓ Population (5-mile): {demographics.get('population_5mi', 0):,}")
+        print(f"      ✓ Median Income: ${demographics.get('median_income', 0):,}")
+        print(f"      ✓ Renter-Occupied: {demographics.get('renter_occupied_pct', 0)}%")
     else:
         demographics = get_census_demographics(lat, lon)
         print(f"      ⚠ Using Census API (less accurate than TractiQ)")
-        print(f"      ✓ Population (3-mile): {demographics['population_3mi']:,}")
-        print(f"      ✓ Median Income: ${demographics['median_income']:,}")
+        print(f"      ✓ Population (3-mile): {demographics.get('population_3mi', 0):,}")
+        print(f"      ✓ Median Income: ${demographics.get('median_income', 0):,}")
 
     # Always run scraper to get additional competitors
     print("      🔍 Running web scraper for additional competitors...")
@@ -442,11 +444,13 @@ def run_analytics(inputs: ProjectInputs, custom_demographics: Optional[Dict] = N
     print("[6/7] Calculating 100-point site score...")
 
     # Demographics scoring (using selected radius)
+    # Use radius-specific key with fallbacks
+    pop_key = f"population_{analysis_radius}mi"
     demographics_data = {
-        "population_3mi": demographics["population"],  # Use primary population for selected radius
-        "growth_rate": demographics["growth_rate"],
-        "median_income": demographics["median_income"],
-        "renter_occupied_pct": demographics["renter_occupied_pct"],
+        "population_3mi": demographics.get(pop_key, demographics.get("population_3mi", demographics.get("population", 75000))),
+        "growth_rate": demographics.get("growth_rate", 1.5),
+        "median_income": demographics.get("median_income", demographics.get(f"median_income_{analysis_radius}mi", 65000)),
+        "renter_occupied_pct": demographics.get("renter_occupied_pct", demographics.get(f"renter_pct_{analysis_radius}mi", 35.0)),
         "median_age": demographics.get("median_age", 37.0)
     }
 
@@ -519,19 +523,20 @@ def run_analytics(inputs: ProjectInputs, custom_demographics: Optional[Dict] = N
     return results
 
 
-def generate_report(inputs: ProjectInputs, use_llm: bool = True) -> FeasibilityReport:
+def generate_report(inputs: ProjectInputs, use_llm: bool = True, analysis_radius: int = 3) -> FeasibilityReport:
     """
     Generate complete feasibility report.
 
     Args:
         inputs: ProjectInputs with all user-provided data
         use_llm: If True, generate narrative sections via Claude API
+        analysis_radius: Radius in miles for market analysis (1, 3, or 5). Default is 3.
 
     Returns:
         Complete FeasibilityReport
     """
-    # Run analytics
-    analytics = run_analytics(inputs)
+    # Run analytics with specified radius
+    analytics = run_analytics(inputs, analysis_radius=analysis_radius)
 
     # Create report package
     report = FeasibilityReport(
@@ -550,12 +555,39 @@ def generate_report(inputs: ProjectInputs, use_llm: bool = True) -> FeasibilityR
         if tractiq_full:
             tractiq_agg = tractiq_full  # Contains competitors, demographics, sf_per_capita, etc.
 
+        # Build 7-year projection data
+        seven_year_projection = []
+        if hasattr(analytics.pro_forma, 'annual_noi') and analytics.pro_forma.annual_noi:
+            for i, noi_value in enumerate(analytics.pro_forma.annual_noi[:7]):
+                # Get corresponding revenue and expense data if available
+                year_data = {
+                    'year': i + 1,
+                    'noi': noi_value,
+                    'revenue': analytics.pro_forma.annual_revenue[i] if hasattr(analytics.pro_forma, 'annual_revenue') and i < len(analytics.pro_forma.annual_revenue) else None,
+                    'expenses': analytics.pro_forma.annual_expenses[i] if hasattr(analytics.pro_forma, 'annual_expenses') and i < len(analytics.pro_forma.annual_expenses) else None,
+                    'occupancy': analytics.pro_forma.occupancy_curve[i] * 100 if hasattr(analytics.pro_forma, 'occupancy_curve') and i < len(analytics.pro_forma.occupancy_curve) else None
+                }
+                seven_year_projection.append(year_data)
+
+        # Build construction cost breakdown
+        construction_costs = {
+            'hard_costs': analytics.pro_forma.development_costs.hard_costs,
+            'soft_costs': analytics.pro_forma.development_costs.soft_costs,
+            'land_cost': inputs.land_cost,
+            'total_cost': analytics.pro_forma.development_costs.total_cost,
+            'cost_per_sf': analytics.pro_forma.development_costs.total_cost / inputs.proposed_nrsf if inputs.proposed_nrsf > 0 else 0,
+            'hard_cost_per_sf': analytics.pro_forma.development_costs.hard_costs / inputs.proposed_nrsf if inputs.proposed_nrsf > 0 else 0,
+            'contingency': analytics.pro_forma.development_costs.contingency if hasattr(analytics.pro_forma.development_costs, 'contingency') else 0
+        }
+
         report_data = llm_report_generator.ReportData(
             project_name=inputs.project_name,
             site_address=analytics.geocoded_address,
             analysis_date=datetime.now().strftime("%Y-%m-%d"),
-            analysis_radius=getattr(analytics, 'analysis_radius', 3),
+            analysis_radius=analysis_radius,
             site_score=analytics.site_scorecard.to_dict(),
+            seven_year_projection=seven_year_projection,
+            construction_costs=construction_costs,
             financial_metrics={
                 "total_development_cost": analytics.pro_forma.development_costs.total_cost,
                 "land_cost": inputs.land_cost,

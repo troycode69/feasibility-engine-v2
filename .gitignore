@@ -14,3 +14,14 @@ venv/
 # Large Files (>100MB) - GitHub Blocker
 venv/lib/python3.13/site-packages/playwright/driver/node
 token.json
+
+# Logs
+*.log
+streamlit.log
+
+# Database (can be large)
+*.db
+
+# Temporary files
+*.tmp
+*.bak

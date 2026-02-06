@@ -7,7 +7,15 @@
       "competitor_count": 154,
       "has_unit_mix": false,
       "has_trends": false
+    },
+    "1202_antioch_pike_nashville_tn": {
+      "market_name": "1202 Antioch Pike, Nashville, TN",
+      "last_updated": "2026-02-05T14:19:01.480041",
+      "pdf_count": 1,
+      "competitor_count": 0,
+      "has_unit_mix": false,
+      "has_trends": false
     }
   },
-  "last_updated": "2026-01-30T23:30:00.000000"
+  "last_updated": "2026-02-05T14:19:01.480422"
 }

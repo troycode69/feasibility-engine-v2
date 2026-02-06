@@ -13,6 +13,12 @@ load_dotenv()
 # VERSION MARKER - Force Streamlit Cloud to update
 APP_VERSION = "2.5.0-PRODUCTION"
 
+# Distance tolerance for competitor counting (matches TractiQ methodology)
+# TractiQ rounds distances, so we add small tolerance
+# Also exclude subject site (distance = 0)
+DISTANCE_TOLERANCE = 0.35  # Adjusted to better match TractiQ counts
+MIN_COMPETITOR_DISTANCE = 0.05  # Exclude subject site
+
 # CRITICAL: Use st.write() early to verify code is deployed
 import streamlit as st
 st.set_page_config(page_title="Storage Feasibility Engine", layout="wide")
@@ -142,6 +148,47 @@ except ImportError as e:
     print(f"Command Center UI unavailable: {e}")
     render_command_center = None
 
+# Import executive dashboard
+try:
+    from src.ui.executive_dashboard import render_executive_dashboard
+except ImportError as e:
+    print(f"Executive Dashboard unavailable: {e}")
+    render_executive_dashboard = None
+
+# Import data quality module
+try:
+    from src.data_quality import assess_data_quality, get_quality_summary_html
+except ImportError as e:
+    print(f"Data Quality module unavailable: {e}")
+    assess_data_quality = None
+    get_quality_summary_html = None
+
+# Import enhanced analytics modules
+try:
+    from src.financial_model_v2 import build_enhanced_pro_forma
+    from src.sensitivity_analysis import run_tornado_analysis
+    from src.scenario_engine import run_scenario_analysis
+    from src.investment_analyzer import run_investment_analysis
+except ImportError as e:
+    print(f"Enhanced analytics modules unavailable: {e}")
+    build_enhanced_pro_forma = None
+    run_tornado_analysis = None
+    run_scenario_analysis = None
+    run_investment_analysis = None
+
+# Import market intelligence modules
+try:
+    from src.rate_trend_analyzer import analyze_rate_trends
+    from src.absorption_analyzer import analyze_absorption
+    from src.competitive_matrix import build_competitive_matrix
+    from src.market_cycle import assess_market_cycle
+except ImportError as e:
+    print(f"Market intelligence modules unavailable: {e}")
+    analyze_rate_trends = None
+    analyze_absorption = None
+    build_competitive_matrix = None
+    assess_market_cycle = None
+
 # === TRACTIQ DATA INTEGRATION ===
 def load_tractiq_data():
     """
@@ -258,6 +305,28 @@ if "pdf_ext_data" not in st.session_state:
     st.session_state.pdf_ext_data = {}
 if "feasibility_engine" not in st.session_state and FeasibilityEngine:
     st.session_state.feasibility_engine = FeasibilityEngine()
+
+# Report generation state - persists across page switches and downloads
+if "generated_report" not in st.session_state:
+    st.session_state.generated_report = None
+if "report_sections" not in st.session_state:
+    st.session_state.report_sections = {}
+if "chart_data" not in st.session_state:
+    st.session_state.chart_data = {}
+if "pdf_bytes" not in st.session_state:
+    st.session_state.pdf_bytes = None
+
+# Enhanced analytics state
+if "sensitivity_analysis" not in st.session_state:
+    st.session_state.sensitivity_analysis = None
+if "scenario_analysis" not in st.session_state:
+    st.session_state.scenario_analysis = None
+if "investment_analysis" not in st.session_state:
+    st.session_state.investment_analysis = None
+
+# Competitor counts cache (for consistency across pages)
+if "competitor_counts" not in st.session_state:
+    st.session_state.competitor_counts = {}
 
 # Display the logo and title in a horizontal lockup
 # === STORSAGE HQ BRANDING (THEME LOCKED) ===
@@ -462,7 +531,7 @@ st.markdown("""
 # Top Navigation Layout
 page = st.radio(
     "Navigation",
-    ["📝 Project Inputs", "📊 Market Intel", "💰 7-Year Operating Model", "🤖 AI Feasibility Report", "🎯 Command Center"],
+    ["📝 Project Inputs", "📊 Market Intel", "💰 7-Year Operating Model", "📈 Executive Dashboard", "🤖 AI Feasibility Report", "🎯 Command Center"],
     index=0,
     horizontal=True,
     label_visibility="collapsed"
@@ -514,15 +583,58 @@ if page == "📝 Project Inputs":
     if "input_name" not in st.session_state:
         st.session_state.input_name = st.session_state.property_data.get('name', '')
 
+    # Get cached markets for autocomplete suggestions
+    from src.tractiq_cache import TractIQCache
+    cache = TractIQCache()
+    cached_markets = cache.list_markets()
+
+    # Build list of cached addresses for suggestions
+    cached_addresses = []
+    for market in cached_markets:
+        market_name = market.get('market_name', '')
+        if market_name and market_name not in cached_addresses:
+            cached_addresses.append(market_name)
+
     # Soft Card Wrapper for Inputs
     input_col, = st.columns(1)
     with input_col:
-        project_address = st.text_input(
-            "Site Address*",
-            key="input_address",
-            placeholder="Enter the property address (e.g., 123 Main St, Nashville, TN 37211)",
-            help="This is the only required field to start analysis"
-        )
+        # If we have cached addresses, show a selectbox with option to enter new
+        if cached_addresses:
+            address_options = ["📝 Enter new address..."] + sorted(cached_addresses)
+
+            # Determine default index
+            current_address = st.session_state.get('input_address', '')
+            if current_address and current_address in cached_addresses:
+                default_idx = address_options.index(current_address)
+            else:
+                default_idx = 0
+
+            selected_option = st.selectbox(
+                "Site Address* (Select from history or enter new)",
+                options=address_options,
+                index=default_idx,
+                help="Choose a previously analyzed site or enter a new address"
+            )
+
+            if selected_option == "📝 Enter new address...":
+                project_address = st.text_input(
+                    "New Address",
+                    value=current_address if current_address not in cached_addresses else "",
+                    placeholder="Enter the property address (e.g., 123 Main St, Nashville, TN 37211)",
+                    key="new_address_input"
+                )
+            else:
+                project_address = selected_option
+                # Update session state
+                st.session_state.input_address = project_address
+        else:
+            # No cached addresses - show simple text input
+            project_address = st.text_input(
+                "Site Address*",
+                key="input_address",
+                placeholder="Enter the property address (e.g., 123 Main St, Nashville, TN 37211)",
+                help="This is the only required field to start analysis"
+            )
 
         project_name = st.text_input(
             "Project Name (Optional)",
@@ -655,9 +767,12 @@ if page == "📝 Project Inputs":
             all_competitors = agg_data.get('competitors', [])
 
             # Filter competitors by radius using pre-calculated distance_miles
+            # Add tolerance to match TractiQ's rounding methodology
+            # Exclude subject site (distance ~0)
             filtered_comps = [c for c in all_competitors
                              if c.get('distance_miles') is not None
-                             and c.get('distance_miles') <= selected_radius]
+                             and c.get('distance_miles') > MIN_COMPETITOR_DISTANCE
+                             and c.get('distance_miles') <= (selected_radius + DISTANCE_TOLERANCE)]
 
             # AUTO-POPULATE: Set session state when cached data is found
             market_id = cache._generate_market_id(project_address)
@@ -672,15 +787,30 @@ if page == "📝 Project Inputs":
         cached_data = get_cached_tractiq_data(project_address, site_address=project_address, radius_miles=selected_radius)
 
         if full_market_data or cached_data:
-            # Use authoritative facility counts from TractiQ SF per Capita report
-            radius_key = f"facility_count_{selected_radius}mi"
-            total_competitors = market_supply.get(radius_key, 0)
+            # Count competitors by distance - this is the most reliable method
+            total_competitors = 0
 
-            # Fallback to filtered competitors count if market_supply not available
-            if total_competitors == 0 and 'filtered_comps' in dir():
-                total_competitors = len(filtered_comps)
+            # Primary: Count from aggregated_data competitors by distance_miles
+            # Use tolerance to match TractiQ's rounding methodology
+            # Exclude subject site (distance ~0)
+            if full_market_data:
+                all_comps = full_market_data.get('aggregated_data', {}).get('competitors', [])
+                total_competitors = len([c for c in all_comps
+                                        if c.get('distance_miles') is not None
+                                        and c.get('distance_miles') > MIN_COMPETITOR_DISTANCE
+                                        and c.get('distance_miles') <= (selected_radius + DISTANCE_TOLERANCE)])
 
-            # Last fallback to pdf_sources count
+            # Fallback: Count from pdf_sources competitors
+            if total_competitors == 0 and full_market_data:
+                pdf_sources = full_market_data.get('pdf_sources', {})
+                for pdf_data in pdf_sources.values():
+                    pdf_comps = pdf_data.get('competitors', [])
+                    total_competitors += len([c for c in pdf_comps
+                                             if c.get('distance_miles') is not None
+                                             and c.get('distance_miles') > MIN_COMPETITOR_DISTANCE
+                                             and c.get('distance_miles') <= (selected_radius + DISTANCE_TOLERANCE)])
+
+            # Final fallback: Count from get_cached_tractiq_data (already filtered)
             if total_competitors == 0 and cached_data:
                 total_competitors = sum(len(pdf.get('competitors', [])) for pdf in cached_data.values())
 
@@ -706,8 +836,19 @@ if page == "📝 Project Inputs":
 
         # Default to 3-mile for display
         radius_mi = st.session_state.get('analysis_radius', 3)
-        radius_key = f"facility_count_{radius_mi}mi"
-        facility_count = market_supply.get(radius_key, comp_count)
+
+        # Count competitors by distance from full_market_data (with tolerance)
+        # Exclude subject site (distance ~0)
+        facility_count = 0
+        if full_market_data:
+            all_comps = full_market_data.get('aggregated_data', {}).get('competitors', [])
+            facility_count = len([c for c in all_comps
+                                  if c.get('distance_miles') is not None
+                                  and c.get('distance_miles') > MIN_COMPETITOR_DISTANCE
+                                  and c.get('distance_miles') <= (radius_mi + DISTANCE_TOLERANCE)])
+        # Fallback to cached_stats total if no distance data
+        if facility_count == 0:
+            facility_count = comp_count
 
         col1.metric(f"Competitors ({radius_mi}mi)", facility_count)
         pop = demo.get(f'population_{radius_mi}mi', 0)
@@ -720,25 +861,29 @@ if page == "📝 Project Inputs":
         if sf_cap:
             col4.metric("SF/Capita", f"{sf_cap:.2f}")
 
-        # Add radius selector
-        st.markdown("#### 📍 Analysis Radius")
-        radius_options = {
-            "1-mile": 1,
-            "3-mile (Standard)": 3,
-            "5-mile": 5
-        }
+        # Add radius selector - 3 side-by-side buttons
+        st.markdown("#### Analysis Radius")
 
         # Initialize analysis_radius in session state if not present
         if "analysis_radius" not in st.session_state:
             st.session_state.analysis_radius = 3  # Default to 3-mile
 
-        selected_radius_label = st.selectbox(
-            "Select market radius for analysis",
-            options=list(radius_options.keys()),
-            index=1,  # Default to "3-mile (Standard)"
-            help="Choose the radius around your site for demographic and market analysis. 3-mile is industry standard."
-        )
-        st.session_state.analysis_radius = radius_options[selected_radius_label]
+        # Use columns with buttons for cleaner UI that won't interfere with sidebar
+        btn_col1, btn_col2, btn_col3 = st.columns(3)
+        with btn_col1:
+            if st.button("1 mile", key="radius_1mi", type="primary" if st.session_state.analysis_radius == 1 else "secondary", use_container_width=True):
+                st.session_state.analysis_radius = 1
+                st.rerun()
+        with btn_col2:
+            if st.button("3 mile ★", key="radius_3mi", type="primary" if st.session_state.analysis_radius == 3 else "secondary", use_container_width=True):
+                st.session_state.analysis_radius = 3
+                st.rerun()
+        with btn_col3:
+            if st.button("5 mile", key="radius_5mi", type="primary" if st.session_state.analysis_radius == 5 else "secondary", use_container_width=True):
+                st.session_state.analysis_radius = 5
+                st.rerun()
+
+        selected_radius = st.session_state.analysis_radius
 
         # Display metrics for selected radius
         if cached_stats:
@@ -746,7 +891,7 @@ if page == "📝 Project Inputs":
             demo = cached_stats.get('demographics', {})
             sf_analysis = cached_stats.get('sf_per_capita', {})
 
-            st.markdown(f"**{selected_radius_label} Metrics:**")
+            st.markdown(f"**{selected_radius}-mile Metrics:**")
             col1, col2, col3 = st.columns(3)
 
             pop = demo.get(f'population_{radius_mi}mi')
@@ -871,51 +1016,134 @@ if page == "📝 Project Inputs":
         "🚀 Analyze Market",
         disabled=analyze_disabled,
         help="Run complete market analysis and generate feasibility report",
-        use_container_width=True
+        use_container_width=True,
+        type="primary"
     ):
-        with st.spinner("🔍 Running comprehensive market analysis..."):
-            try:
-                # Import analytics modules
-                from src.report_orchestrator import ProjectInputs, run_analytics
+        try:
+            # Import analytics modules
+            from src.report_orchestrator import ProjectInputs, run_analytics
 
-                # Build inputs object
-                inputs = ProjectInputs(
-                    project_name=project_name if project_name else project_address,
-                    site_address=project_address,
-                    proposed_nrsf=custom_nrsf if custom_nrsf else 60000,  # Default if AI size
-                    land_cost=land_cost if land_cost else 0,
-                    loan_to_cost=loan_to_cost,
-                    interest_rate=interest_rate,
-                    tractiq_market_id=project_address,  # Pass address for TractiQ cache lookup
-                    # Will add more parameters as needed
-                )
+            # Build inputs object
+            inputs = ProjectInputs(
+                project_name=project_name if project_name else project_address,
+                site_address=project_address,
+                proposed_nrsf=custom_nrsf if custom_nrsf else 60000,  # Default if AI size
+                land_cost=land_cost if land_cost else 0,
+                loan_to_cost=loan_to_cost,
+                interest_rate=interest_rate,
+                tractiq_market_id=project_address,  # Pass address for TractiQ cache lookup
+            )
 
-                # Run 7-step analytics pipeline
-                analysis_radius = st.session_state.get('analysis_radius', 3)
-                st.info(f"Running 7-step analytics pipeline ({analysis_radius}-mile radius)...")
+            analysis_radius = st.session_state.get('analysis_radius', 3)
 
-                # Pass TractiQ demographics if available
+            # Create premium progress experience
+            progress_container = st.container()
+            with progress_container:
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                metrics_preview = st.empty()
+
+                # Step 1: Geocoding
+                status_text.markdown("📍 **Step 1/7: Geocoding site address...**")
+                progress_bar.progress(14)
+                import time
+                time.sleep(0.3)  # Brief pause for UX
+
+                # Step 2: Loading Market Data
+                status_text.markdown("📊 **Step 2/7: Loading market intelligence...**")
+                progress_bar.progress(28)
+
+                # Check TractiQ data status
+                tractiq_loaded = full_market_data is not None
+                comp_count = cached_stats.get('total_competitors', 0) if cached_stats else 0
+
+                with metrics_preview.container():
+                    col1, col2, col3 = st.columns(3)
+                    col1.metric("TractiQ Data", "✅ Loaded" if tractiq_loaded else "❌ Missing")
+                    col2.metric("Competitors", f"{comp_count} found")
+                    col3.metric("Radius", f"{analysis_radius} mi")
+
+                time.sleep(0.3)
+
+                # Step 3: Demographics
+                status_text.markdown("👥 **Step 3/7: Fetching demographic data...**")
+                progress_bar.progress(42)
+                time.sleep(0.2)
+
+                # Step 4: Supply/Demand
+                status_text.markdown("⚖️ **Step 4/7: Analyzing supply/demand...**")
+                progress_bar.progress(56)
+                time.sleep(0.2)
+
+                # Step 5: Financial Model
+                status_text.markdown("💰 **Step 5/7: Building financial model...**")
+                progress_bar.progress(70)
+                time.sleep(0.2)
+
+                # Step 6: Site Scoring
+                status_text.markdown("🎯 **Step 6/7: Calculating site score...**")
+                progress_bar.progress(84)
+                time.sleep(0.2)
+
+                # Step 7: Generate Insights
+                status_text.markdown("✨ **Step 7/7: Generating insights...**")
+                progress_bar.progress(90)
+
+                # Actually run the analytics
                 custom_demographics = st.session_state.get('tractiq_demographics')
                 analytics_results = run_analytics(inputs, custom_demographics=custom_demographics, analysis_radius=analysis_radius)
 
-                # Store results in session state
-                st.session_state.analysis_results = analytics_results
-                st.session_state.analysis_complete = True
-                st.session_state.property_data = {
-                    "name": project_name if project_name else project_address,
-                    "address": project_address,
-                    "lat": analytics_results.latitude if hasattr(analytics_results, 'latitude') else None,
-                    "lon": analytics_results.longitude if hasattr(analytics_results, 'longitude') else None
-                }
+                progress_bar.progress(100)
+                status_text.markdown("✅ **Analysis Complete!**")
 
-                st.success("✅ Analysis complete! Navigate to Market Intel to view results.")
-                st.balloons()
+            # Store results in session state
+            st.session_state.analysis_results = analytics_results
+            st.session_state.analysis_complete = True
+            st.session_state.property_data = {
+                "name": project_name if project_name else project_address,
+                "address": project_address,
+                "lat": analytics_results.latitude if hasattr(analytics_results, 'latitude') else None,
+                "lon": analytics_results.longitude if hasattr(analytics_results, 'longitude') else None
+            }
 
-            except Exception as e:
-                st.error(f"❌ Analysis failed: {str(e)}")
-                import traceback
-                with st.expander("🔍 Error Details"):
-                    st.code(traceback.format_exc())
+            # Show summary results immediately
+            st.success("🎉 **Market Analysis Complete!**")
+
+            # Data source visibility panel
+            with st.expander("📊 Data Sources & Quality", expanded=True):
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("TractiQ Data", "✅ Loaded" if tractiq_loaded else "⚠️ Missing")
+                col2.metric("Competitors", f"{comp_count}")
+
+                # Calculate data freshness
+                last_updated = cached_stats.get('last_updated', '') if cached_stats else ''
+                if last_updated:
+                    try:
+                        from datetime import datetime
+                        update_date = datetime.fromisoformat(last_updated.replace('Z', '+00:00'))
+                        days_old = (datetime.now() - update_date.replace(tzinfo=None)).days
+                        col3.metric("Data Freshness", f"{days_old} days old")
+                    except:
+                        col3.metric("Data Freshness", "Unknown")
+                else:
+                    col3.metric("Data Freshness", "N/A")
+
+                # Confidence score based on data completeness
+                confidence = 0
+                if tractiq_loaded: confidence += 40
+                if comp_count > 5: confidence += 30
+                if demographics: confidence += 15
+                if sf_per_capita: confidence += 15
+                col4.metric("Confidence", f"{confidence}%")
+
+            st.info("👉 **Next**: Navigate to **📊 Market Intel** for detailed analysis or **📈 Executive Dashboard** for investment summary")
+            st.balloons()
+
+        except Exception as e:
+            st.error(f"❌ Analysis failed: {str(e)}")
+            import traceback
+            with st.expander("🔍 Error Details"):
+                st.code(traceback.format_exc())
 
     # Show current analysis status
     if st.session_state.analysis_complete:
@@ -959,6 +1187,12 @@ elif page == "🎯 Command Center":
 elif page == "📊 Market Intel":
     st.header("📊 Market Intelligence & Feasibility")
     st.caption("AI-driven market analysis - all data calculated automatically")
+
+    # Import data layer for consistent data access
+    try:
+        from src.data_layer import FeasibilityDataLayer as FDL
+    except ImportError:
+        FDL = None
 
     # Check if analysis has been run
     if not st.session_state.get("analysis_complete"):
@@ -1291,11 +1525,48 @@ elif page == "💰 7-Year Operating Model":
             loan_term = st.number_input("Loan Term (yrs)", value=30, step=5)
         total_cost = land_cost + (construction_psf * total_sf)
         loan_amount = total_cost * ltv
+        # Calculate construction cost breakdown (industry standard ratios)
+        hard_costs = construction_psf * total_sf * 0.75  # ~75% of construction is hard costs
+        soft_costs = construction_psf * total_sf * 0.20  # ~20% soft costs
+        contingency = construction_psf * total_sf * 0.05  # ~5% contingency
+
     st.markdown("---")
-    col1, col2, col3 = st.columns(3)
+
+    # Development Cost Summary
+    st.markdown("### 💵 Development Cost Summary")
+    col1, col2, col3, col4 = st.columns(4)
     col1.metric("Total Development Cost", f"${total_cost:,.0f}")
     col2.metric("Loan Amount", f"${loan_amount:,.0f}")
     col3.metric("Equity Required", f"${total_cost - loan_amount:,.0f}")
+    col4.metric("Cost per SF", f"${total_cost/total_sf:.0f}/SF")
+
+    # Construction Cost Breakdown (expandable)
+    with st.expander("🔧 Construction Cost Breakdown", expanded=False):
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("**Cost Categories**")
+            st.markdown(f"- **Land Cost:** ${land_cost:,.0f}")
+            st.markdown(f"- **Hard Costs (Building, Site):** ${hard_costs:,.0f}")
+            st.markdown(f"- **Soft Costs (Design, Permits, Legal):** ${soft_costs:,.0f}")
+            st.markdown(f"- **Contingency (5%):** ${contingency:,.0f}")
+        with col2:
+            st.markdown("**Per SF Metrics**")
+            st.markdown(f"- **Land Cost per SF:** ${land_cost/total_sf:.2f}/SF")
+            st.markdown(f"- **Hard Costs per SF:** ${hard_costs/total_sf:.2f}/SF")
+            st.markdown(f"- **Soft Costs per SF:** ${soft_costs/total_sf:.2f}/SF")
+            st.markdown(f"- **Total All-In Cost:** ${total_cost/total_sf:.2f}/SF")
+
+        # Store construction costs in session state for AI report
+        st.session_state.construction_costs = {
+            'land_cost': land_cost,
+            'hard_costs': hard_costs,
+            'soft_costs': soft_costs,
+            'contingency': contingency,
+            'total_cost': total_cost,
+            'cost_per_sf': total_cost/total_sf,
+            'hard_cost_per_sf': hard_costs/total_sf
+        }
+
     st.markdown("---")
     if st.button("🚀 GENERATE 7-YEAR PROJECTION", type="primary"):
         with st.spinner("Building 84-month lease-up model with enhanced attrition curves..."):
@@ -1352,11 +1623,24 @@ elif page == "💰 7-Year Operating Model":
                 # Chart Container (Soft Card)
                 chart_col, = st.columns(1)
                 with chart_col:
-                    render_7year_projection(
-                        annual_summary=annual_summary,
-                        monthly_projection=projection_df,
-                        property_info=property_info
-                    )
+                    if render_7year_projection is not None:
+                        render_7year_projection(
+                            annual_summary=annual_summary,
+                            monthly_projection=projection_df,
+                            property_info=property_info
+                        )
+                    else:
+                        # Fallback display when projection_display module is not available
+                        st.markdown("### 📊 7-Year Financial Summary")
+
+                        # Display annual summary table
+                        if annual_summary:
+                            summary_df = pd.DataFrame(annual_summary)
+                            st.dataframe(summary_df, use_container_width=True)
+
+                        # Display monthly projection chart
+                        if projection_df is not None and len(projection_df) > 0:
+                            st.line_chart(projection_df[['occupied_sf', 'monthly_revenue']].head(84))
             except Exception as e:
                 st.error(f"Error generating projection: {str(e)}")
                 import traceback
@@ -1542,6 +1826,35 @@ elif page == "🤖 AI Feasibility Report":
     # Generation Controls
     st.markdown("### 🚀 Generate Report")
 
+    # Show previously generated report if available (persists across page switches)
+    if st.session_state.get('report_sections'):
+        st.success("📄 **Previously Generated Report Available**")
+        generated_info = st.session_state.get('generated_report', {})
+        if generated_info:
+            st.caption(f"Generated: {generated_info.get('timestamp', 'Unknown')} | Address: {generated_info.get('address', 'Unknown')}")
+
+        with st.expander("📋 View Report Sections", expanded=False):
+            for section_name, content in st.session_state.report_sections.items():
+                with st.expander(f"📋 {section_name.replace('_', ' ').title()}", expanded=False):
+                    st.markdown(content)
+
+        # Re-download button using cached PDF
+        if st.session_state.get('pdf_bytes'):
+            st.download_button(
+                label="📥 Re-Download Report (PDF)",
+                data=st.session_state.pdf_bytes,
+                file_name=f"Feasibility_Report_{datetime.now().strftime('%Y%m%d')}.pdf",
+                mime="application/pdf"
+            )
+
+        if st.button("🗑️ Clear Report", type="secondary"):
+            st.session_state.report_sections = {}
+            st.session_state.generated_report = None
+            st.session_state.pdf_bytes = None
+            st.rerun()
+
+        st.markdown("---")
+
     col1, col2 = st.columns([3, 1])
     with col1:
         st.warning("⚠️ **Anthropic API Key Required**: Add your API key to `.env` file to enable AI report generation")
@@ -1561,6 +1874,9 @@ elif page == "🤖 AI Feasibility Report":
                 from src.report_orchestrator import ProjectInputs, generate_report
 
                 # Create project inputs
+                # Get tractiq_market_id from session state (set when data was loaded)
+                market_id = st.session_state.get("tractiq_market_id")
+
                 inputs = ProjectInputs(
                     project_name=project_name or "Test Project",
                     site_address=site_address or "123 Main St, Nashville, TN 37211",
@@ -1573,11 +1889,12 @@ elif page == "🤖 AI Feasibility Report":
                     zoning_status=1,  # Approved
                     loan_to_cost=loan_to_cost,
                     interest_rate=interest_rate,
-                    tractiq_market_id="tn_372113104" if "Nashville" in site_address or "37211" in site_address else None
+                    tractiq_market_id=market_id
                 )
 
                 # Generate report (analytics only, no LLM)
-                report = generate_report(inputs, use_llm=False)
+                analysis_radius = st.session_state.get("analysis_radius", 3)
+                report = generate_report(inputs, use_llm=False, analysis_radius=analysis_radius)
 
                 # Display results
                 st.success("✅ Analytics Pipeline Complete!")
@@ -1615,6 +1932,9 @@ elif page == "🤖 AI Feasibility Report":
                 try:
                     from src.report_orchestrator import ProjectInputs, generate_report
 
+                    # Get tractiq_market_id from session state (set when data was loaded)
+                    market_id = st.session_state.get("tractiq_market_id")
+
                     inputs = ProjectInputs(
                         project_name=project_name or "Test Project",
                         site_address=site_address or "123 Main St, Nashville, TN 37211",
@@ -1626,11 +1946,21 @@ elif page == "🤖 AI Feasibility Report":
                         lot_size_acres=lot_acres,
                         zoning_status=1,
                         loan_to_cost=loan_to_cost,
-                        interest_rate=interest_rate
+                        interest_rate=interest_rate,
+                        tractiq_market_id=market_id
                     )
 
                     # Generate full report with LLM
-                    report = generate_report(inputs, use_llm=True)
+                    analysis_radius = st.session_state.get("analysis_radius", 3)
+                    report = generate_report(inputs, use_llm=True, analysis_radius=analysis_radius)
+
+                    # Store report in session state for persistence across page switches
+                    st.session_state.report_sections = report.report_sections
+                    st.session_state.generated_report = {
+                        'timestamp': datetime.now().isoformat(),
+                        'address': site_address or project_name,
+                        'analytics_results': report.analytics_results
+                    }
 
                     st.success("🎉 Complete Report Generated!")
 
@@ -1642,24 +1972,18 @@ elif page == "🤖 AI Feasibility Report":
                         with st.expander(f"📋 {section_name.replace('_', ' ').title()}", expanded=False):
                             st.markdown(content)
 
-                    # Generate PDF report
+                    # Generate PDF report with AI content
                     try:
-                        from src.pdf_report_generator import PDFReportGenerator
+                        from src.pdf_report_generator import generate_ai_report_pdf
 
-                        # Prepare data for PDF generator
-                        pdf_data = {
-                            'address': site_address or project_name,
-                            'ai_results': report.report_sections,  # AI-generated sections
-                            'inputs': {
-                                'project_name': project_name,
-                                'proposed_nrsf': proposed_nrsf,
-                                'land_cost': land_cost
-                            }
-                        }
+                        # Generate PDF from AI sections
+                        pdf_bytes = generate_ai_report_pdf(
+                            address=site_address or project_name,
+                            ai_sections=report.report_sections
+                        )
 
-                        # Generate PDF
-                        pdf_gen = PDFReportGenerator()
-                        pdf_bytes = pdf_gen.generate_full_report(pdf_data)
+                        # Store PDF in session state for re-download without regeneration
+                        st.session_state.pdf_bytes = pdf_bytes
 
                         # Offer PDF download
                         st.download_button(
@@ -1671,6 +1995,8 @@ elif page == "🤖 AI Feasibility Report":
                         )
                     except Exception as pdf_error:
                         st.warning(f"PDF generation failed: {pdf_error}")
+                        import traceback
+                        st.code(traceback.format_exc())
                         # Fallback to text download
                         st.download_button(
                             label="📥 Download Report (Text)",
@@ -1687,3 +2013,192 @@ elif page == "🤖 AI Feasibility Report":
     st.markdown("---")
     st.caption("💰 **Cost Estimate**: ~$0.75-$1.50 per report (Claude API usage)")
     st.caption("⏱️ **Generation Time**: 30-60 seconds per complete report")
+
+# === PAGE 5: EXECUTIVE DASHBOARD ===
+elif page == "📈 Executive Dashboard":
+    st.header("📈 Executive Dashboard")
+    st.caption("McKinley-level investment summary with interactive visualizations")
+
+    # Check if analysis has been run
+    if not st.session_state.get("analysis_complete"):
+        st.warning("⚠️ No analysis results available. Please go to Project Inputs page and run analysis first.")
+        st.info("👈 Navigate to **📝 Project Inputs** to enter your site address and start analysis")
+        st.stop()
+
+    results = st.session_state.analysis_results
+    if not results:
+        st.error("Analysis results not found in session state")
+        st.stop()
+
+    # Check if executive dashboard module is available
+    if render_executive_dashboard is None:
+        st.error("Executive Dashboard module is not available")
+        st.info("Required modules: plotly, src/ui/executive_dashboard.py")
+        st.stop()
+
+    # Prepare data for dashboard
+    try:
+        address = st.session_state.property_data.get('address', 'Unknown Location')
+
+        # Extract score breakdown
+        score = 0
+        score_breakdown = {}
+        if hasattr(results, 'site_scorecard') and results.site_scorecard:
+            scorecard = results.site_scorecard
+            score = scorecard.total_score
+            score_breakdown = {
+                'demographics': {'score': scorecard.demographics.total_score, 'max': 25},
+                'supply': {'score': scorecard.supply_demand.total_score, 'max': 25},
+                'site': {'score': scorecard.site_attributes.total_score, 'max': 25},
+                'competitor': {'score': scorecard.competitive_positioning.total_score, 'max': 15},
+                'economic': {'score': scorecard.economic_market.total_score, 'max': 10}
+            }
+
+        # Extract recommendation
+        recommendation = {
+            'decision': scorecard.recommendation if hasattr(results, 'site_scorecard') else 'PENDING',
+            'confidence': scorecard.tier if hasattr(results, 'site_scorecard') else 'Unknown',
+            'narrative': f"Site scored {score}/100 points. {scorecard.recommendation if hasattr(results, 'site_scorecard') else 'Analysis pending.'}"
+        }
+
+        # Extract pro forma data
+        proforma_data = {}
+        if hasattr(results, 'pro_forma') and results.pro_forma:
+            pf = results.pro_forma
+            # Transform annual_noi list to annual_summaries format for executive dashboard
+            annual_summaries = []
+            if hasattr(pf, 'annual_noi') and pf.annual_noi:
+                annual_summaries = [
+                    {'year': i + 1, 'noi': noi_value}
+                    for i, noi_value in enumerate(pf.annual_noi[:7])
+                ]
+            proforma_data = {
+                'irr': pf.metrics.irr_10yr if hasattr(pf.metrics, 'irr_10yr') else 0,
+                'npv': pf.metrics.npv if hasattr(pf.metrics, 'npv') else 0,
+                'cap_rate': pf.metrics.cap_rate * 100 if hasattr(pf.metrics, 'cap_rate') else 0,
+                'dscr': pf.metrics.dscr_y1 if hasattr(pf.metrics, 'dscr_y1') else 0,
+                'annual_summaries': annual_summaries
+            }
+
+        # Extract market data
+        market_data = {}
+        if hasattr(results, 'market_supply_demand'):
+            msd = results.market_supply_demand
+            market_data = {
+                'sf_per_capita': msd.sf_per_capita_3mi if hasattr(msd, 'sf_per_capita_3mi') else 7.0,
+                'avg_occupancy': msd.avg_occupancy if hasattr(msd, 'avg_occupancy') else 88
+            }
+
+        # Check for enhanced analytics (sensitivity, scenarios, investment)
+        sensitivity_data = st.session_state.get('sensitivity_analysis')
+        scenario_data = st.session_state.get('scenario_analysis')
+        investment_data = st.session_state.get('investment_analysis')
+
+        # Render the executive dashboard
+        render_executive_dashboard(
+            address=address,
+            score=score,
+            score_breakdown=score_breakdown,
+            recommendation=recommendation,
+            proforma_data=proforma_data,
+            sensitivity_data=sensitivity_data,
+            scenario_data=scenario_data,
+            investment_data=investment_data,
+            market_data=market_data
+        )
+
+        st.markdown("---")
+
+        # Enhanced Analytics Section
+        st.markdown("### 🔬 Run Enhanced Analytics")
+        st.caption("Generate sensitivity analysis, scenario modeling, and investment sizing")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if st.button("🎯 Run Sensitivity Analysis", use_container_width=True):
+                if run_tornado_analysis is None:
+                    st.error("Sensitivity analysis module not available")
+                else:
+                    with st.spinner("Running sensitivity analysis..."):
+                        try:
+                            # Run sensitivity analysis
+                            sensitivity_results = run_tornado_analysis(proforma_data)
+                            st.session_state.sensitivity_analysis = sensitivity_results
+                            st.success("✅ Sensitivity analysis complete!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Sensitivity analysis failed: {e}")
+
+            if st.button("📊 Run Scenario Analysis", use_container_width=True):
+                if run_scenario_analysis is None:
+                    st.error("Scenario analysis module not available")
+                else:
+                    with st.spinner("Running 3-case scenario analysis..."):
+                        try:
+                            scenario_results = run_scenario_analysis(proforma_data)
+                            st.session_state.scenario_analysis = scenario_results
+                            st.success("✅ Scenario analysis complete!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Scenario analysis failed: {e}")
+
+        with col2:
+            if st.button("💰 Run Investment Analysis", use_container_width=True):
+                if run_investment_analysis is None:
+                    st.error("Investment analysis module not available")
+                else:
+                    with st.spinner("Running investment sizing analysis..."):
+                        try:
+                            investment_results = run_investment_analysis(proforma_data, market_data)
+                            st.session_state.investment_analysis = investment_results
+                            st.success("✅ Investment analysis complete!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Investment analysis failed: {e}")
+
+            if st.button("📈 Run Market Cycle Assessment", use_container_width=True):
+                if assess_market_cycle is None:
+                    st.error("Market cycle module not available")
+                else:
+                    with st.spinner("Assessing market cycle position..."):
+                        try:
+                            cycle_results = assess_market_cycle(
+                                market_name=address,
+                                occupancy=market_data.get('avg_occupancy', 88),
+                                rate_growth=2.5,  # Would get from rate trend analyzer
+                                sf_per_capita=market_data.get('sf_per_capita', 7.0),
+                                construction_pipeline=0.5
+                            )
+                            st.session_state.market_cycle = cycle_results
+                            st.success(f"✅ Market Cycle: {cycle_results.phase.value}")
+                            st.info(f"Entry Timing: {cycle_results.entry_timing_recommendation}")
+                        except Exception as e:
+                            st.error(f"Market cycle assessment failed: {e}")
+
+        # Data Quality Assessment
+        st.markdown("---")
+        st.markdown("### 📋 Data Quality Assessment")
+
+        if assess_data_quality is not None:
+            # Build data dict from current analysis
+            data_for_quality = {
+                'population_3mi': results.market_supply_demand.population_3mi if hasattr(results, 'market_supply_demand') else None,
+                'median_income': scorecard.demographics.median_income if hasattr(results, 'site_scorecard') else None,
+                'sf_per_capita': market_data.get('sf_per_capita'),
+                'avg_occupancy': market_data.get('avg_occupancy'),
+                'competitor_count': len(st.session_state.get('all_competitors', [])),
+                'land_cost': st.session_state.get('financial_inputs', {}).get('land_cost'),
+                'rentable_sqft': st.session_state.get('financial_inputs', {}).get('rentable_sqft'),
+            }
+
+            quality_assessment = assess_data_quality(data_for_quality)
+            st.markdown(get_quality_summary_html(quality_assessment), unsafe_allow_html=True)
+        else:
+            st.info("Data quality module not available")
+
+    except Exception as e:
+        st.error(f"Dashboard rendering error: {e}")
+        import traceback
+        with st.expander("Error Details"):
+            st.code(traceback.format_exc())

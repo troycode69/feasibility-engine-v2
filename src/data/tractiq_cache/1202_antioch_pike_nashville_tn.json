@@ -1,0 +1,171 @@
+{
+  "market_id": "1202_antioch_pike_nashville_tn",
+  "market_name": "1202 Antioch Pike, Nashville, TN",
+  "last_updated": "2026-02-05T14:19:01.480041",
+  "pdf_count": 1,
+  "pdf_sources": {
+    "uploaded_data": {
+      "competitors": [],
+      "extracted_rates": [],
+      "unit_mix": {},
+      "historical_trends": [],
+      "demographics": {
+        "population_1mi": 10354,
+        "population_3mi": 87131,
+        "population_5mi": 208339,
+        "households_1mi": 3327,
+        "households_3mi": 32168,
+        "households_5mi": 82567,
+        "households_3mi_projected": 34176,
+        "households_5mi_projected": 87719,
+        "median_income_1mi": 46597,
+        "median_income_3mi": 56411,
+        "median_income_5mi": 65289,
+        "renter_occupied_pct_1mi": 58.701532912533814,
+        "renter_occupied_pct_3mi": 54.274434220343196,
+        "renter_occupied_pct_5mi": 53.6001065801107,
+        "median_age_1mi": 30.24,
+        "median_age_3mi": 31.33,
+        "median_age_5mi": 32.57,
+        "population_3mi_projected": 92034,
+        "population_growth_rate_annual": 1.100922855563602
+      },
+      "sf_per_capita_analysis": {
+        "sf_per_capita_1mi": 7.760142773524922,
+        "sf_per_capita_5mi": 7.957194764302411,
+        "total_rentable_sf_1mi": 676149.0,
+        "total_rentable_sf_5mi": 1657794.0,
+        "total_gross_sf_1mi": 706815.0,
+        "total_gross_sf_5mi": 1824073.0,
+        "facility_count_1mi": 12,
+        "facility_count_5mi": 31
+      },
+      "commercial_developments": [
+        {
+          "name": "Renovations and Additions at Paragon Mills Elementary School",
+          "address": "260 Paragon Mills Rd"
+        },
+        {
+          "name": "AVID & Candlewood Suites",
+          "address": "350 Harding Pl"
+        },
+        {
+          "name": "Harding Place Center",
+          "address": "351 Harding Pl"
+        },
+        {
+          "name": "Harding Place Center",
+          "address": "351 Harding Pl"
+        },
+        {
+          "name": "Antioch Building and Site Improvements",
+          "address": "5006 Harding Pl"
+        },
+        {
+          "name": "Sam's Club #8294-219 - 5 Deck Deli Addition / Nashville",
+          "address": "1300 Antioch Pike"
+        },
+        {
+          "name": "Sam's Club #8294.234 Remodel / Nashville",
+          "address": "1300 Antioch Pike"
+        },
+        {
+          "name": "Sam's Club #8294-221 - Rotisserie Cooker Install / Nashville",
+          "address": "1300 Antioch Pike"
+        },
+        {
+          "name": "Pickleball Kingdom / Nashville",
+          "address": "5035 Harding Pl"
+        },
+        {
+          "name": "TIRRC Office",
+          "address": "3310 Ezell Rd"
+        }
+      ],
+      "housing_developments": [],
+      "extraction_date": "2026-02-05T14:19:01.479885"
+    }
+  },
+  "aggregated_data": {
+    "competitors": [],
+    "extracted_rates": [],
+    "historical_trends": [],
+    "unit_mix": {},
+    "market_metrics": {},
+    "demographics": {
+      "population_1mi": 10354,
+      "population_3mi": 87131,
+      "population_5mi": 208339,
+      "households_1mi": 3327,
+      "households_3mi": 32168,
+      "households_5mi": 82567,
+      "households_3mi_projected": 34176,
+      "households_5mi_projected": 87719,
+      "median_income_1mi": 46597,
+      "median_income_3mi": 56411,
+      "median_income_5mi": 65289,
+      "renter_occupied_pct_1mi": 58.701532912533814,
+      "renter_occupied_pct_3mi": 54.274434220343196,
+      "renter_occupied_pct_5mi": 53.6001065801107,
+      "median_age_1mi": 30.24,
+      "median_age_3mi": 31.33,
+      "median_age_5mi": 32.57,
+      "population_3mi_projected": 92034,
+      "population_growth_rate_annual": 1.100922855563602
+    },
+    "sf_per_capita_analysis": {
+      "sf_per_capita_1mi": 65.30316785783272,
+      "sf_per_capita_5mi": 7.957194764302411,
+      "total_rentable_sf_1mi": 676149.0,
+      "total_rentable_sf_5mi": 1657794.0,
+      "total_gross_sf_1mi": 706815.0,
+      "total_gross_sf_5mi": 1824073.0,
+      "facility_count_1mi": 12,
+      "facility_count_5mi": 31
+    },
+    "market_supply": {},
+    "commercial_developments": [
+      {
+        "name": "Renovations and Additions at Paragon Mills Elementary School",
+        "address": "260 Paragon Mills Rd"
+      },
+      {
+        "name": "AVID & Candlewood Suites",
+        "address": "350 Harding Pl"
+      },
+      {
+        "name": "Harding Place Center",
+        "address": "351 Harding Pl"
+      },
+      {
+        "name": "Harding Place Center",
+        "address": "351 Harding Pl"
+      },
+      {
+        "name": "Antioch Building and Site Improvements",
+        "address": "5006 Harding Pl"
+      },
+      {
+        "name": "Sam's Club #8294-219 - 5 Deck Deli Addition / Nashville",
+        "address": "1300 Antioch Pike"
+      },
+      {
+        "name": "Sam's Club #8294.234 Remodel / Nashville",
+        "address": "1300 Antioch Pike"
+      },
+      {
+        "name": "Sam's Club #8294-221 - Rotisserie Cooker Install / Nashville",
+        "address": "1300 Antioch Pike"
+      },
+      {
+        "name": "Pickleball Kingdom / Nashville",
+        "address": "5035 Harding Pl"
+      },
+      {
+        "name": "TIRRC Office",
+        "address": "3310 Ezell Rd"
+      }
+    ],
+    "pipeline_summary": {}
+  }
+}

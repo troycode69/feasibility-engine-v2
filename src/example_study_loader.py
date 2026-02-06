@@ -7,7 +7,14 @@ Supports: PDF, Word (.docx), Text (.txt), Markdown (.md)
 import os
 from pathlib import Path
 from typing import List, Dict
-import PyPDF2
+
+# Optional PDF support
+try:
+    import PyPDF2
+    HAS_PYPDF2 = True
+except ImportError:
+    HAS_PYPDF2 = False
+    print("Warning: PyPDF2 not installed - PDF example studies won't load. Run: pip install PyPDF2")
 
 
 def load_example_studies(example_dir: str = None) -> List[Dict[str, str]]:
@@ -90,6 +97,10 @@ def load_example_studies(example_dir: str = None) -> List[Dict[str, str]]:
 
 def extract_text_from_pdf(pdf_path: Path) -> str:
     """Extract text content from a PDF file."""
+    if not HAS_PYPDF2:
+        print(f"Skipping PDF {pdf_path.name} - PyPDF2 not installed")
+        return ""
+
     try:
         text_content = []
         with open(pdf_path, 'rb') as file:
@@ -173,6 +184,164 @@ def format_examples_for_prompt(examples: List[Dict[str, str]], max_examples: int
     return prompt_text
 
 
+def extract_example_insights(examples: List[Dict[str, str]]) -> Dict:
+    """
+    Extract structured patterns from example studies for AI learning.
+
+    Analyzes example feasibility studies to identify:
+    - Common terminology and phrases
+    - Score-to-recommendation mappings
+    - Metric thresholds used for classifications
+    - Risk assessment frameworks
+
+    Args:
+        examples: List of example study dicts with 'content' key
+
+    Returns:
+        Dict with extracted insights for AI training
+    """
+    import re
+
+    insights = {
+        'writing_patterns': [],
+        'metric_thresholds': {},
+        'recommendation_triggers': [],
+        'risk_framework': [],
+        'terminology': set(),
+        'score_mappings': []
+    }
+
+    # Industry-specific terminology to look for
+    storage_terms = [
+        'NRSF', 'NOI', 'DSCR', 'cap rate', 'IRR', 'NPV',
+        'lease-up', 'absorption', 'stabilization', 'occupancy',
+        'SF per capita', 'rate compression', 'undersupplied',
+        'oversupplied', 'balanced market', 'trade area',
+        'climate-controlled', 'non-climate', 'unit mix'
+    ]
+
+    for example in examples:
+        content = example.get('content', '')
+
+        # Extract terminology usage
+        for term in storage_terms:
+            if term.lower() in content.lower():
+                insights['terminology'].add(term)
+
+        # Extract score-to-recommendation patterns
+        # Look for patterns like "score of 85/100 = Proceed"
+        score_patterns = re.findall(
+            r'score[s]?\s*(?:of\s*)?(\d+)(?:/100|\s*points?).*?(proceed|caution|no.?go|excellent|good|fair|weak|poor)',
+            content, re.IGNORECASE
+        )
+        for score, rec in score_patterns:
+            insights['score_mappings'].append({
+                'score': int(score),
+                'recommendation': rec.lower()
+            })
+
+        # Extract SF per capita thresholds
+        sf_patterns = re.findall(
+            r'(\d+\.?\d*)\s*(?:SF|square feet)\s*per\s*capita.*?(undersupplied|oversupplied|balanced|saturated|healthy)',
+            content, re.IGNORECASE
+        )
+        for value, classification in sf_patterns:
+            if 'sf_per_capita' not in insights['metric_thresholds']:
+                insights['metric_thresholds']['sf_per_capita'] = []
+            insights['metric_thresholds']['sf_per_capita'].append({
+                'value': float(value),
+                'classification': classification.lower()
+            })
+
+        # Extract occupancy thresholds
+        occ_patterns = re.findall(
+            r'(\d+)%?\s*(?:occupancy|occ).*?(strong|healthy|weak|concerning|stabilized)',
+            content, re.IGNORECASE
+        )
+        for value, classification in occ_patterns:
+            if 'occupancy' not in insights['metric_thresholds']:
+                insights['metric_thresholds']['occupancy'] = []
+            insights['metric_thresholds']['occupancy'].append({
+                'value': int(value),
+                'classification': classification.lower()
+            })
+
+        # Extract risk keywords
+        risk_keywords = re.findall(
+            r'(risk|concern|challenge|threat|weakness)[:;]\s*([^.]+\.)',
+            content, re.IGNORECASE
+        )
+        for risk_type, description in risk_keywords:
+            insights['risk_framework'].append({
+                'type': risk_type.lower(),
+                'description': description.strip()
+            })
+
+        # Extract recommendation triggers
+        rec_patterns = re.findall(
+            r'(?:recommend|suggests?|indicates?)\s+(?:to\s+)?(proceed|caution|not\s+proceed|pass|investigate)',
+            content, re.IGNORECASE
+        )
+        insights['recommendation_triggers'].extend([r.lower() for r in rec_patterns])
+
+    # Convert set to list for JSON serialization
+    insights['terminology'] = list(insights['terminology'])
+
+    # Deduplicate
+    insights['recommendation_triggers'] = list(set(insights['recommendation_triggers']))
+
+    return insights
+
+
+def get_style_guide_from_examples(examples: List[Dict[str, str]]) -> str:
+    """
+    Generate a concise style guide from example studies.
+
+    Returns a formatted string that can be prepended to AI prompts
+    to ensure consistent writing style.
+
+    Args:
+        examples: List of example study dicts
+
+    Returns:
+        Style guide text
+    """
+    insights = extract_example_insights(examples)
+
+    style_guide = "=== STYLE GUIDE FROM REFERENCE STUDIES ===\n\n"
+
+    # Terminology
+    if insights['terminology']:
+        style_guide += "**Industry Terminology to Use:**\n"
+        style_guide += ", ".join(sorted(insights['terminology']))
+        style_guide += "\n\n"
+
+    # Score mappings
+    if insights['score_mappings']:
+        style_guide += "**Score-to-Recommendation Framework:**\n"
+        for mapping in insights['score_mappings'][:5]:  # Limit to 5
+            style_guide += f"  - Score {mapping['score']}: {mapping['recommendation'].title()}\n"
+        style_guide += "\n"
+
+    # Metric thresholds
+    if insights['metric_thresholds'].get('sf_per_capita'):
+        style_guide += "**SF Per Capita Benchmarks:**\n"
+        for threshold in insights['metric_thresholds']['sf_per_capita'][:3]:
+            style_guide += f"  - {threshold['value']} SF/capita = {threshold['classification'].title()}\n"
+        style_guide += "\n"
+
+    # Risk patterns
+    if insights['risk_framework']:
+        style_guide += "**Risk Assessment Patterns:**\n"
+        for risk in insights['risk_framework'][:3]:
+            style_guide += f"  - {risk['type'].title()}: {risk['description'][:80]}...\n"
+        style_guide += "\n"
+
+    style_guide += "==========================================\n\n"
+
+    return style_guide
+
+
 # Test function
 if __name__ == "__main__":
     examples = load_example_studies()
@@ -183,3 +352,16 @@ if __name__ == "__main__":
     if examples:
         prompt_addition = format_examples_for_prompt(examples, max_examples=2)
         print(f"\nPrompt addition length: {len(prompt_addition)} characters")
+
+        # Test insight extraction
+        print("\n=== Testing Insight Extraction ===")
+        insights = extract_example_insights(examples)
+        print(f"Terminology found: {len(insights['terminology'])} terms")
+        print(f"Score mappings: {len(insights['score_mappings'])}")
+        print(f"Metric thresholds: {list(insights['metric_thresholds'].keys())}")
+        print(f"Risk patterns: {len(insights['risk_framework'])}")
+
+        # Test style guide generation
+        print("\n=== Style Guide ===")
+        style_guide = get_style_guide_from_examples(examples)
+        print(style_guide[:500] + "...")
